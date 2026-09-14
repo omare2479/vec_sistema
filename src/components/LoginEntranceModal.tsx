@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { UserAccount, UserRole, ThemeMode } from '../types';
 import { THEMES } from '../utils/theme';
+import { fetchUsersFromCloud } from '../data/userAccountsData';
 
 interface LoginEntranceModalProps {
   currentTheme: ThemeMode;
@@ -61,7 +62,9 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
 
   const theme = THEMES[currentTheme];
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -74,24 +77,40 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
       return;
     }
 
-    const matched = users.find(
+    setIsLoggingIn(true);
+
+    // Siempre validar contra los datos más recientes de la nube (Supabase)
+    let usersToCheck = users;
+    try {
+      const cloudUsers = await fetchUsersFromCloud();
+      if (cloudUsers && cloudUsers.length > 0) {
+        usersToCheck = cloudUsers;
+      }
+    } catch {
+      // Si la nube no responde, usar la lista local como respaldo
+    }
+
+    const matched = usersToCheck.find(
       (u) =>
         (u.username.toLowerCase() === cleanUser || (u.email && u.email.toLowerCase() === cleanUser)) &&
         u.password === cleanPass
     );
 
     if (!matched) {
+      setIsLoggingIn(false);
       setErrorMessage('Usuario o contraseña no válidos. Verifica tus credenciales asignadas por la Dirección.');
       return;
     }
 
     if (matched.status === 'inactivo') {
+      setIsLoggingIn(false);
       setErrorMessage('Esta cuenta se encuentra inactiva. Comunícate con el Administrador Central.');
       return;
     }
 
     setSuccessMessage(`¡Bienvenido al Ministerio VEC, ${matched.name}!`);
     setTimeout(() => {
+      setIsLoggingIn(false);
       onLoginSuccess(matched);
     }, 600);
   };
@@ -363,10 +382,20 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.35)] transition-all cursor-pointer active:scale-[0.99]"
+                    disabled={isLoggingIn}
+                    className={`w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.35)] transition-all cursor-pointer active:scale-[0.99] ${isLoggingIn ? 'opacity-75 cursor-wait' : ''}`}
                   >
-                    <LogIn className="w-4 h-4" />
-                    <span>Entrar al Ministerio</span>
+                    {isLoggingIn ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                        <span>Verificando credenciales...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="w-4 h-4" />
+                        <span>Entrar al Ministerio</span>
+                      </>
+                    )}
                   </button>
                 </form>
 

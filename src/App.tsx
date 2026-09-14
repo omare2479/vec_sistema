@@ -72,6 +72,7 @@ export default function App() {
     fetchUsersFromCloud().then((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
         setUsers(cloudUsers);
+        saveUsersToStorage(cloudUsers);
       }
     });
   }, []);
