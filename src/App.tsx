@@ -222,6 +222,14 @@ export default function App() {
     }
   };
 
+  const handleRefreshUsers = async () => {
+    const cloudUsers = await fetchUsersFromCloud();
+    if (cloudUsers && cloudUsers.length > 0) {
+      setUsers(cloudUsers);
+      saveUsersToStorage(cloudUsers);
+    }
+  };
+
   return (
     <div className={`min-h-screen ${theme.bgClass} text-[#f0f6ff] transition-colors duration-300 relative flex flex-col selection:bg-amber-400 selection:text-amber-950`}>
       {/* Background Radial Glow */}
@@ -325,6 +333,7 @@ export default function App() {
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
             onOpenEntranceModal={() => setIsEntranceOpen(true)}
+            onRefreshUsers={handleRefreshUsers}
           />
         )}
       </main>

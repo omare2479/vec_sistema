@@ -40,6 +40,7 @@ interface UserManagementViewProps {
   onUpdateUser: (id: string, updates: Partial<UserAccount>) => void;
   onDeleteUser: (id: string) => void;
   onOpenEntranceModal: () => void;
+  onRefreshUsers?: () => Promise<void>;
 }
 
 export const UserManagementView: React.FC<UserManagementViewProps> = ({
@@ -53,7 +54,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   onUpdateUser,
   onDeleteUser,
   onOpenEntranceModal,
+  onRefreshUsers,
 }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const theme = THEMES[currentTheme];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | UserRole>('all');
@@ -294,6 +297,22 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               >
                 <Camera className="w-3.5 h-3.5 text-amber-300" />
                 <span>Cambiar Imagen</span>
+              </button>
+            )}
+
+            {onRefreshUsers && (
+              <button
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  await onRefreshUsers();
+                  setTimeout(() => setIsRefreshing(false), 500);
+                }}
+                disabled={isRefreshing}
+                className="px-3 py-2.5 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                title="Sincronizar usuarios con la nube de Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Sincronizar Nube</span>
               </button>
             )}
 
