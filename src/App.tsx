@@ -7,6 +7,9 @@ import {
   saveUsersToStorage,
   loadCurrentSession,
   saveCurrentSession,
+  fetchUsersFromCloud,
+  saveUserToCloud,
+  deleteUserFromCloud,
 } from './data/userAccountsData';
 import {
   loadAllGalleryPhotos,
@@ -56,12 +59,19 @@ export default function App() {
   });
   const [randomPhotoIndex, setRandomPhotoIndex] = useState<number>(0);
 
-  // Load photos on mount
+  // Load photos and users from cloud on mount
   useEffect(() => {
     loadAllGalleryPhotos().then((photos) => {
       setGalleryPhotos(photos);
       if (photos.length > 0) {
         setRandomPhotoIndex(Math.floor(Math.random() * photos.length));
+      }
+    });
+
+    // Cargar usuarios oficiales desde la nube central de Supabase
+    fetchUsersFromCloud().then((cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setUsers(cloudUsers);
       }
     });
   }, []);
@@ -161,17 +171,26 @@ export default function App() {
     setIsEntranceOpen(true);
   };
 
-  const handleCreateUser = (newAccount: UserAccount) => {
+  const handleCreateUser = async (newAccount: UserAccount) => {
     setUsers((prev) => {
       const next = [newAccount, ...prev];
       saveUsersToStorage(next);
       return next;
     });
+    // Guardar en la nube central de Supabase para que todos los músicos lo vean
+    await saveUserToCloud(newAccount);
   };
 
-  const handleUpdateUser = (id: string, updates: Partial<UserAccount>) => {
+  const handleUpdateUser = async (id: string, updates: Partial<UserAccount>) => {
+    let updatedAccount: UserAccount | null = null;
     setUsers((prev) => {
-      const next = prev.map((u) => (u.id === id ? { ...u, ...updates } : u));
+      const next = prev.map((u) => {
+        if (u.id === id) {
+          updatedAccount = { ...u, ...updates };
+          return updatedAccount;
+        }
+        return u;
+      });
       saveUsersToStorage(next);
       return next;
     });
@@ -181,14 +200,22 @@ export default function App() {
       setCurrentUser(updated);
       saveCurrentSession(updated);
     }
+
+    // Actualizar en la nube central de Supabase
+    if (updatedAccount) {
+      await saveUserToCloud(updatedAccount);
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     setUsers((prev) => {
       const next = prev.filter((u) => u.id !== id);
       saveUsersToStorage(next);
       return next;
     });
+
+    // Eliminar de la nube central de Supabase
+    await deleteUserFromCloud(id);
 
     if (currentUser?.id === id) {
       handleLogout();

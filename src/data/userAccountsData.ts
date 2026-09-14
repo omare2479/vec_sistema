@@ -1,4 +1,5 @@
 import { UserAccount } from '../types';
+import { supabase } from '../utils/supabaseClient';
 
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   {
@@ -76,20 +77,107 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
 const STORAGE_USERS_KEY = 'vec_ministerio_users_v1';
 const STORAGE_SESSION_KEY = 'vec_ministerio_session_v1';
 
+// Mapear de base de datos Supabase a UserAccount
+function mapDbToUser(row: any): UserAccount {
+  return {
+    id: row.id,
+    username: row.username,
+    name: row.name,
+    email: row.email || undefined,
+    role: row.role,
+    instrument: row.instrument,
+    password: row.password,
+    avatarUrl: row.avatar_url || undefined,
+    createdAt: row.created_at,
+    status: row.status || 'activo',
+    phone: row.phone || undefined,
+    notes: row.notes || undefined,
+  };
+}
+
+// Mapear de UserAccount a Supabase
+function mapUserToDb(u: UserAccount) {
+  return {
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    email: u.email || null,
+    role: u.role,
+    instrument: u.instrument,
+    password: u.password,
+    avatar_url: u.avatarUrl || null,
+    created_at: u.createdAt,
+    status: u.status || 'activo',
+    phone: u.phone || null,
+    notes: u.notes || null,
+  };
+}
+
 export function loadUsersFromStorage(): UserAccount[] {
   try {
     const raw = localStorage.getItem(STORAGE_USERS_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(INITIAL_USER_ACCOUNTS));
-      return INITIAL_USER_ACCOUNTS;
-    }
+    if (!raw) return INITIAL_USER_ACCOUNTS;
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return INITIAL_USER_ACCOUNTS;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_USER_ACCOUNTS;
   } catch {
     return INITIAL_USER_ACCOUNTS;
+  }
+}
+
+/**
+ * Carga los usuarios desde la nube de Supabase. Si la tabla está vacía, la inicializa con las cuentas por defecto.
+ */
+export async function fetchUsersFromCloud(): Promise<UserAccount[]> {
+  try {
+    const { data, error } = await supabase
+      .from('ministry_users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Error al consultar usuarios en Supabase:', error.message);
+      return loadUsersFromStorage();
+    }
+
+    if (data && data.length > 0) {
+      const cloudUsers = data.map(mapDbToUser);
+      // Actualizar copia local
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(cloudUsers));
+      return cloudUsers;
+    } else {
+      // Si la base de datos está vacía, subir los iniciales a Supabase
+      await syncAllUsersToCloud(INITIAL_USER_ACCOUNTS);
+      return INITIAL_USER_ACCOUNTS;
+    }
+  } catch (err) {
+    console.warn('Excepción al conectar con Supabase users:', err);
+    return loadUsersFromStorage();
+  }
+}
+
+export async function saveUserToCloud(user: UserAccount): Promise<void> {
+  try {
+    const dbRow = mapUserToDb(user);
+    await supabase.from('ministry_users').upsert(dbRow, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Error al guardar usuario en Supabase:', err);
+  }
+}
+
+export async function deleteUserFromCloud(userId: string): Promise<void> {
+  try {
+    await supabase.from('ministry_users').delete().eq('id', userId);
+  } catch (err) {
+    console.warn('Error al eliminar usuario en Supabase:', err);
+  }
+}
+
+export async function syncAllUsersToCloud(usersList: UserAccount[]): Promise<void> {
+  try {
+    const rows = usersList.map(mapUserToDb);
+    await supabase.from('ministry_users').upsert(rows, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Error en syncAllUsersToCloud:', err);
   }
 }
 

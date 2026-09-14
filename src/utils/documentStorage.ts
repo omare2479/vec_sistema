@@ -1,8 +1,6 @@
 import { BandDocument } from '../types';
+import { supabase } from './supabaseClient';
 
-const DB_NAME = 'vec_ministry_documents_db';
-const STORE_NAME = 'band_documents_store';
-const DB_VERSION = 1;
 const STORAGE_DOCS_KEY = 'vec_band_documents_list_v1';
 
 export const INITIAL_DOCUMENTS: BandDocument[] = [
@@ -41,49 +39,62 @@ export const INITIAL_DOCUMENTS: BandDocument[] = [
   },
 ];
 
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('IndexedDB not supported'));
-      return;
-    }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+function mapDbToDoc(row: any): BandDocument {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    sizeFormatted: row.size_formatted,
+    sizeBytes: Number(row.size_bytes) || 0,
+    uploadedAt: row.uploaded_at,
+    description: row.description || '',
+    dataUrl: row.data_url || undefined,
+    textContent: row.text_content || undefined,
+    associatedSongTitle: row.associated_song_title || undefined,
+    isUserUploaded: row.is_user_uploaded ?? true,
+  };
+}
+
+function mapDocToDb(d: BandDocument) {
+  return {
+    id: d.id,
+    name: d.name,
+    type: d.type,
+    size_formatted: d.sizeFormatted,
+    size_bytes: d.sizeBytes,
+    uploaded_at: d.uploadedAt,
+    description: d.description || null,
+    data_url: d.dataUrl || null,
+    text_content: d.textContent || null,
+    associated_song_title: d.associatedSongTitle || null,
+    is_user_uploaded: d.isUserUploaded ?? true,
+  };
 }
 
 export async function loadAllDocuments(): Promise<BandDocument[]> {
   try {
-    const db = await openDB();
-    return new Promise<BandDocument[]>((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const results = req.result as BandDocument[];
-        if (results && results.length > 0) {
-          resolve(results);
-        } else {
-          // Initialize with default documents
-          saveAllDocuments(INITIAL_DOCUMENTS).then(() => {
-            resolve(INITIAL_DOCUMENTS);
-          });
-        }
-      };
-      req.onerror = () => {
-        resolve(loadFromLocalStorageFallback());
-      };
-    });
-  } catch {
-    return loadFromLocalStorageFallback();
+    // 1. Cargar desde la nube de Supabase
+    const { data, error } = await supabase
+      .from('ministry_documents')
+      .select('*')
+      .order('uploaded_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      const cloudDocs = data.map(mapDbToDoc);
+      localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(cloudDocs));
+      return cloudDocs;
+    }
+
+    if (!error && (!data || data.length === 0)) {
+      await saveAllDocuments(INITIAL_DOCUMENTS);
+      return INITIAL_DOCUMENTS;
+    }
+  } catch (err) {
+    console.warn('Fallo al conectar documentos con Supabase:', err);
   }
+
+  // Fallback local
+  return loadFromLocalStorageFallback();
 }
 
 function loadFromLocalStorageFallback(): BandDocument[] {
@@ -99,63 +110,52 @@ function loadFromLocalStorageFallback(): BandDocument[] {
 }
 
 export async function saveDocument(doc: BandDocument): Promise<void> {
+  // 1. Guardar en Supabase en la nube
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.put(doc);
-  } catch {
-    // LocalStorage fallback (metadata only to avoid quota issues)
-    if (typeof window !== 'undefined') {
-      try {
-        const current = loadFromLocalStorageFallback();
-        const next = [doc, ...current.filter((d) => d.id !== doc.id)];
-        const lightweight = next.map((d) => {
-          if (d.dataUrl && d.dataUrl.length > 100000) {
-            return { ...d, dataUrl: undefined };
-          }
-          return d;
-        });
-        localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(lightweight));
-      } catch (err) {
-        console.warn('LocalStorage save error:', err);
-      }
+    const dbRow = mapDocToDb(doc);
+    await supabase.from('ministry_documents').upsert(dbRow, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Error al guardar documento en Supabase:', err);
+  }
+
+  // 2. Respaldo local
+  if (typeof window !== 'undefined') {
+    try {
+      const current = loadFromLocalStorageFallback();
+      const next = [doc, ...current.filter((d) => d.id !== doc.id)];
+      localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(next));
+    } catch (err) {
+      console.warn('LocalStorage save error:', err);
     }
   }
 }
 
 export async function saveAllDocuments(docs: BandDocument[]): Promise<void> {
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.clear();
-    for (const d of docs) {
-      store.put(d);
-    }
-  } catch {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(docs));
-      } catch (err) {
-        console.warn('LocalStorage save error:', err);
-      }
+    const rows = docs.map(mapDocToDb);
+    await supabase.from('ministry_documents').upsert(rows, { onConflict: 'id' });
+  } catch (err) {
+    console.warn('Error al guardar todos los documentos en Supabase:', err);
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(docs));
+    } catch {
+      // ignore
     }
   }
 }
 
 export async function deleteDocument(id: string): Promise<void> {
   try {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.delete(id);
-  } catch {
-    if (typeof window !== 'undefined') {
-      const current = loadFromLocalStorageFallback();
-      const filtered = current.filter((d) => d.id !== id);
-      localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(filtered));
-    }
+    await supabase.from('ministry_documents').delete().eq('id', id);
+  } catch (err) {
+    console.warn('Error al eliminar documento en Supabase:', err);
+  }
+  if (typeof window !== 'undefined') {
+    const current = loadFromLocalStorageFallback();
+    const filtered = current.filter((d) => d.id !== id);
+    localStorage.setItem(STORAGE_DOCS_KEY, JSON.stringify(filtered));
   }
 }
 
@@ -177,7 +177,6 @@ export function downloadDocument(doc: BandDocument): void {
     a.click();
     document.body.removeChild(a);
   } else {
-    // Generate a downloadable document text / sample file
     const content = doc.textContent || `Ministerio de Música Voces en Cristo (VEC)\n\nDocumento: ${doc.name}\nDescripción: ${doc.description}\nFecha: ${doc.uploadedAt}\n\nEste archivo está registrado en el cancionero oficial de Voces en Cristo.`;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
