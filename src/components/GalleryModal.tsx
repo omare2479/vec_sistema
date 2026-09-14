@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ThemeMode, GalleryPhoto, PhotoCategory } from '../types';
 import { THEMES } from '../utils/theme';
+import { uploadImageToSupabase } from '../utils/supabaseUpload';
 
 interface GalleryModalProps {
   currentTheme: ThemeMode;
@@ -66,7 +67,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
     return matchesCategory && matchesSearch;
   });
 
-  const handleProcessFiles = (files: FileList | null) => {
+  const handleProcessFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/'));
@@ -75,43 +76,46 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
       return;
     }
 
-    let loadedCount = 0;
+    setStatusMessage('Subiendo foto(s) a la nube Supabase...');
     const newPhotos: GalleryPhoto[] = [];
 
-    fileArray.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        if (dataUrl) {
-          // Format a clean name from file
-          const cleanName = file.name
-            .replace(/\.[^/.]+$/, '')
-            .replace(/[-_]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
+    for (let idx = 0; idx < fileArray.length; idx++) {
+      const file = fileArray[idx];
+      // Intenta subir a Supabase en la nube
+      const publicUrl = await uploadImageToSupabase(file);
 
-          newPhotos.push({
-            id: `usr-p-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
-            title: cleanName.length > 2 ? cleanName : `Foto Ministerio VEC #${photos.length + idx + 1}`,
-            description: `Foto subida al sistema el ${new Date().toLocaleDateString('es-PE')}`,
-            category: activeCategory === 'todos' ? 'conciertos' : activeCategory,
-            date: new Date().toLocaleDateString('es-PE', { month: 'short', year: 'numeric' }),
-            imageUrl: dataUrl,
-            tags: ['VEC', 'Comunidad', 'Ministerio'],
-            isUserUploaded: true,
-            uploadedAt: Date.now() + idx,
-          });
-        }
+      // Si no hay red o bucket no configurado, usa fallback local dataUrl
+      let finalImageUrl = publicUrl;
+      if (!finalImageUrl) {
+        finalImageUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve((e.target?.result as string) || '');
+          reader.readAsDataURL(file);
+        });
+      }
 
-        loadedCount++;
-        if (loadedCount === fileArray.length) {
-          onAddPhotos(newPhotos);
-          setStatusMessage(`¡${newPhotos.length} foto(s) añadidas exitosamente a la galería!`);
-          setTimeout(() => setStatusMessage(null), 4000);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      const cleanName = file.name
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[-_]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      newPhotos.push({
+        id: `usr-p-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+        title: cleanName.length > 2 ? cleanName : `Foto Ministerio VEC #${photos.length + idx + 1}`,
+        description: `Foto del Ministerio VEC subida el ${new Date().toLocaleDateString('es-PE')}`,
+        category: activeCategory === 'todos' ? 'conciertos' : activeCategory,
+        date: new Date().toLocaleDateString('es-PE', { month: 'short', year: 'numeric' }),
+        imageUrl: finalImageUrl,
+        tags: ['VEC', 'Comunidad', 'Ministerio'],
+        isUserUploaded: true,
+        uploadedAt: Date.now() + idx,
+      });
+    }
+
+    onAddPhotos(newPhotos);
+    setStatusMessage(`¡${newPhotos.length} foto(s) guardadas exitosamente en la galería!`);
+    setTimeout(() => setStatusMessage(null), 4000);
   };
 
   const handleDrop = (e: React.DragEvent) => {

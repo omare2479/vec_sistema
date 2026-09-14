@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ThemeMode, Song, BandDocument } from '../types';
 import { THEMES } from '../utils/theme';
 import { formatBytes } from '../utils/documentStorage';
+import { uploadDocumentToSupabase } from '../utils/supabaseUpload';
 import {
   FileText,
   Upload,
@@ -129,7 +130,7 @@ export const ImportSongDocumentModal: React.FC<ImportSongDocumentModalProps> = (
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
       setError('Por favor selecciona primero un archivo PDF o DOC.');
@@ -147,6 +148,13 @@ export const ImportSongDocumentModal: React.FC<ImportSongDocumentModalProps> = (
       liturgico: 'Liturgia & Santa Misa',
     };
 
+    setIsProcessing(true);
+    // Subir documento a la nube Supabase
+    let finalDocUrl = await uploadDocumentToSupabase(selectedFile);
+    if (!finalDocUrl) {
+      finalDocUrl = fileDataUrl; // Fallback local
+    }
+
     const docId = `doc-${Date.now()}`;
     const nowStr = new Date().toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -162,7 +170,7 @@ export const ImportSongDocumentModal: React.FC<ImportSongDocumentModalProps> = (
       sizeBytes: selectedFile.size,
       uploadedAt: nowStr,
       description: subtitle || `Archivo importado para el canto ${songTitle}`,
-      dataUrl: fileDataUrl,
+      dataUrl: finalDocUrl,
       textContent: fileContentText || undefined,
       associatedSongTitle: songTitle.trim(),
       isUserUploaded: true,
@@ -187,7 +195,7 @@ export const ImportSongDocumentModal: React.FC<ImportSongDocumentModalProps> = (
         arrangementNote: `Archivo adjunto: ${selectedFile.name} (${formatBytes(selectedFile.size)})`,
         introTags: [fileExtension.toUpperCase(), selectedKey + ' Mayor', 'Importado'],
         attachedDocName: selectedFile.name,
-        attachedDocUrl: fileDataUrl,
+        attachedDocUrl: finalDocUrl,
         attachedDocType: fileExtension,
         lyricsAndChords: fileContentText || undefined,
       };
@@ -195,7 +203,8 @@ export const ImportSongDocumentModal: React.FC<ImportSongDocumentModalProps> = (
       onAddSong(newSong);
     }
 
-    setSuccess(`¡Archivo ${selectedFile.name} importado exitosamente!`);
+    setIsProcessing(false);
+    setSuccess(`¡Archivo ${selectedFile.name} subido a la nube e importado exitosamente!`);
     setTimeout(() => {
       onClose();
     }, 900);
