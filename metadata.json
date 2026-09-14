@@ -1,0 +1,6 @@
+{
+  "name": "VEC - Voces en Cristo",
+  "description": "Banda y Ministerio Musical Cristiano Católico: Gestión de repertorios, concierto de adoración, tiempos litúrgicos y comunidad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
