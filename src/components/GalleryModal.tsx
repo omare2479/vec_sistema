@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { ThemeMode, GalleryPhoto, PhotoCategory } from '../types';
 import { THEMES } from '../utils/theme';
-import { uploadImageToSupabase } from '../utils/supabaseUpload';
+import { compressImage } from '../utils/imageCompressor';
 
 interface GalleryModalProps {
   currentTheme: ThemeMode;
@@ -76,17 +76,18 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
       return;
     }
 
-    setStatusMessage('Subiendo foto(s) a la nube Supabase...');
+    setStatusMessage(`Comprimiendo y subiendo ${fileArray.length} foto(s) a la nube...`);
     const newPhotos: GalleryPhoto[] = [];
 
     for (let idx = 0; idx < fileArray.length; idx++) {
       const file = fileArray[idx];
-      // Intenta subir a Supabase en la nube
-      const publicUrl = await uploadImageToSupabase(file);
 
-      // Si no hay red o bucket no configurado, usa fallback local dataUrl
-      let finalImageUrl = publicUrl;
-      if (!finalImageUrl) {
+      // Comprimir imagen a máximo 800px y calidad JPEG 0.6 (~50-100KB)
+      let finalImageUrl: string;
+      try {
+        finalImageUrl = await compressImage(file, 800, 0.6);
+      } catch {
+        // Fallback: leer como base64 sin comprimir
         finalImageUrl = await new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onload = (e) => resolve((e.target?.result as string) || '');
@@ -114,7 +115,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
     }
 
     onAddPhotos(newPhotos);
-    setStatusMessage(`¡${newPhotos.length} foto(s) guardadas exitosamente en la galería!`);
+    setStatusMessage(`¡${newPhotos.length} foto(s) guardadas exitosamente en la nube!`);
     setTimeout(() => setStatusMessage(null), 4000);
   };
 

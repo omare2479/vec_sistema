@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ThemeMode, PrayerIntention, GalleryPhoto } from '../types';
+import { ThemeMode, PrayerIntention, GalleryPhoto, UserAccount } from '../types';
 import { THEMES } from '../utils/theme';
 import { BAND_MEMBERS, UPCOMING_SCHEDULE, INITIAL_PRAYER_INTENTIONS } from '../data/mockData';
 import { RandomMemoryWidget } from './RandomMemoryWidget';
@@ -8,6 +8,7 @@ import { Image as ImageIcon, Sparkles, Shuffle, Upload, ArrowRight } from 'lucid
 interface ComunidadViewProps {
   currentTheme: ThemeMode;
   photos?: GalleryPhoto[];
+  users?: UserAccount[];
   onOpenGallery?: () => void;
   onSelectPhoto?: (photo: GalleryPhoto) => void;
 }
@@ -15,6 +16,7 @@ interface ComunidadViewProps {
 export const ComunidadView: React.FC<ComunidadViewProps> = ({
   currentTheme,
   photos = [],
+  users = [],
   onOpenGallery,
   onSelectPhoto,
 }) => {
@@ -179,30 +181,54 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
             </p>
           </div>
           <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-amber-300 font-bold shrink-0">
-            {BAND_MEMBERS.length} Servidores
+            {users.length > 0 ? users.filter((u) => u.status === 'activo').length : BAND_MEMBERS.length} Servidores
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {BAND_MEMBERS.map((member) => (
-            <div
-              key={member.id}
-              className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center gap-3 hover:bg-white/10 transition-colors shadow-sm"
-            >
-              <img
-                alt={member.name}
-                className="w-12 h-12 rounded-full object-cover shrink-0 border border-amber-400/40"
-                src={member.imageUrl}
-              />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h3 className={`text-sm font-bold truncate ${theme.textMain}`}>{member.name}</h3>
+          {(users.length > 0
+            ? users.filter((u) => u.status === 'activo')
+            : BAND_MEMBERS
+          ).map((item) => {
+            const isUserAccount = 'username' in item;
+            const name = item.name;
+            const role = isUserAccount
+              ? item.role === 'admin_central'
+                ? 'Director General / Admin Central'
+                : item.role === 'admin'
+                ? 'Coordinador / Admin'
+                : 'Músico / Salmista'
+              : (item as any).role;
+            const instrument = item.instrument;
+            const photoUrl = isUserAccount
+              ? (item as UserAccount).avatarUrl ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+              : (item as any).imageUrl;
+
+            return (
+              <div
+                key={item.id}
+                className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center gap-3 hover:bg-white/10 transition-colors shadow-sm"
+              >
+                <img
+                  alt={name}
+                  className="w-12 h-12 rounded-full object-cover shrink-0 border border-amber-400/40"
+                  src={photoUrl}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+                  }}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className={`text-sm font-bold truncate ${theme.textMain}`}>{name}</h3>
+                  </div>
+                  <p className="text-xs font-semibold text-amber-400 truncate">{role}</p>
+                  <p className={`text-[11px] ${theme.textMuted} truncate`}>{instrument}</p>
                 </div>
-                <p className="text-xs font-semibold text-amber-400 truncate">{member.role}</p>
-                <p className={`text-[11px] ${theme.textMuted} truncate`}>{member.instrument}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

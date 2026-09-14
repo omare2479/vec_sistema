@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { UserAccount, UserRole, ThemeMode } from '../types';
 import { THEMES } from '../utils/theme';
-import { uploadImageToSupabase } from '../utils/supabaseUpload';
+import { compressImage } from '../utils/imageCompressor';
 
 interface UserManagementViewProps {
   currentTheme: ThemeMode;
@@ -141,20 +141,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
 
     setIsUploadingAvatar(true);
     try {
-      // Intentar subir a Supabase
-      const uploadedUrl = await uploadImageToSupabase(file);
-      if (uploadedUrl) {
-        setFormAvatarUrl(uploadedUrl);
-      } else {
-        // Fallback local como base64 dataUrl
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          setFormAvatarUrl((ev.target?.result as string) || '');
-        };
-        reader.readAsDataURL(file);
-      }
+      // Comprimir foto de perfil a máximo 300px y calidad óptima (~20KB)
+      const compressedUrl = await compressImage(file, 300, 0.7);
+      setFormAvatarUrl(compressedUrl);
     } catch (err) {
       console.warn('Error al procesar foto de perfil:', err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setFormAvatarUrl((ev.target?.result as string) || '');
+      };
+      reader.readAsDataURL(file);
     } finally {
       setIsUploadingAvatar(false);
     }

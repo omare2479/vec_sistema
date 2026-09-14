@@ -311,6 +311,7 @@ export default function App() {
           <ComunidadView
             currentTheme={currentTheme}
             photos={galleryPhotos}
+            users={users}
             onOpenGallery={() => setIsGalleryOpen(true)}
           />
         )}
