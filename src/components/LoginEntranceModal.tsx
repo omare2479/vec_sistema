@@ -81,7 +81,7 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
     );
 
     if (!matched) {
-      setErrorMessage('Usuario o contraseña no válidos. Verifica tus datos o usa una cuenta demo.');
+      setErrorMessage('Usuario o contraseña no válidos. Verifica tus credenciales asignadas por la Dirección.');
       return;
     }
 
@@ -278,48 +278,20 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
           {/* RIGHT COLUMN: Authentication & Account Creation */}
           <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
             <div>
-              {/* Header Navigation: Iniciar Sesión / Crear Cuenta */}
+              {/* Header Navigation: Iniciar Sesión con Credenciales */}
               <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
                 <div>
                   <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                    {activeTab === 'login' ? 'Acceso de Participantes' : 'Crear Nueva Cuenta'}
+                    Acceso de Participantes
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {activeTab === 'login'
-                      ? 'Ingresa tus credenciales para acceder al ministerio'
-                      : 'Crea cuentas de Usuario, Administrador o Administrador Central'}
+                    Ingresa con tu usuario y contraseña asignados por la Dirección
                   </p>
                 </div>
 
-                <div className="flex items-center bg-black/40 p-1 rounded-xl border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('login');
-                      setErrorMessage(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'login'
-                        ? 'bg-amber-400 text-slate-950 shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Entrar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('register');
-                      setErrorMessage(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      activeTab === 'register'
-                        ? 'bg-amber-400 text-slate-950 shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Crear Cuenta
-                  </button>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-semibold">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Acceso Protegido</span>
                 </div>
               </div>
 
@@ -338,9 +310,8 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 1: LOGIN FORM */}
-              {activeTab === 'login' ? (
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
+              {/* FORMULARIO DE ACCESO EXCLUSIVO */}
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                       Usuario o Correo Electrónico
@@ -398,216 +369,14 @@ export const LoginEntranceModal: React.FC<LoginEntranceModalProps> = ({
                     <span>Entrar al Ministerio</span>
                   </button>
                 </form>
-              ) : (
-                /* TAB 2: REGISTER ACCOUNT (Usuario / Administrador / Administrador Central) */
-                <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Nombre Completo *
-                      </label>
-                      <input
-                        type="text"
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        placeholder="ej. Mateo Morales"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-amber-400 text-white text-xs outline-none"
-                        required
-                      />
-                    </div>
 
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Usuario de Ingreso *
-                      </label>
-                      <input
-                        type="text"
-                        value={regUsername}
-                        onChange={(e) => setRegUsername(e.target.value)}
-                        placeholder="ej. mateo.guitarra"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-amber-400 text-white text-xs outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Contraseña *
-                      </label>
-                      <input
-                        type="password"
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="Crea una contraseña"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-amber-400 text-white text-xs outline-none"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Instrumento o Carisma
-                      </label>
-                      <input
-                        type="text"
-                        value={regInstrument}
-                        onChange={(e) => setRegInstrument(e.target.value)}
-                        placeholder="ej. Guitarra, Voz, Salmista, Teclado"
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 focus:border-amber-400 text-white text-xs outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Role Selector: Usuario, Administrador, Administrador Central */}
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
-                      Tipo de Rol Ministerial a Asignar *
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setRegRole('usuario')}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          regRole === 'usuario'
-                            ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                            : 'bg-black/30 border-white/10 text-slate-400 hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-xs font-bold">
-                          <User className="w-3.5 h-3.5" />
-                          <span>Usuario</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 leading-tight">
-                          Participante y Músico
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRegRole('admin')}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          regRole === 'admin'
-                            ? 'bg-sky-500/20 border-sky-400 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.2)]'
-                            : 'bg-black/30 border-white/10 text-slate-400 hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-xs font-bold">
-                          <Shield className="w-3.5 h-3.5" />
-                          <span>Admin</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 leading-tight">
-                          Coordinador Musical
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRegRole('admin_central')}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          regRole === 'admin_central'
-                            ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                            : 'bg-black/30 border-white/10 text-slate-400 hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-xs font-bold">
-                          <Crown className="w-3.5 h-3.5" />
-                          <span>Admin Central</span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 leading-tight">
-                          Director General
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Guardar y Crear Cuenta</span>
-                  </button>
-                </form>
-              )}
-
-              {/* QUICK DEMO CREDENTIALS SELECTOR (1-Click Login) */}
-              <div className="mt-6 pt-5 border-t border-white/10">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                    Acceso Rápido por Rol
-                  </span>
-                  <span className="text-[10px] text-slate-500">Prueba con 1 clic</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* Admin Central Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const adminCentral = users.find((u) => u.role === 'admin_central') || users[0];
-                      handleQuickLogin(adminCentral);
-                    }}
-                    className="p-2 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-amber-300 text-xs font-bold">
-                      <Crown className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Admin Central</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      Director General
-                    </div>
-                    <div className="text-[9px] text-slate-500 mt-0.5 font-mono">
-                      admincentral / vec2026
-                    </div>
-                  </button>
-
-                  {/* Admin Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const admin = users.find((u) => u.role === 'admin') || users[1];
-                      handleQuickLogin(admin);
-                    }}
-                    className="p-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/30 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-sky-300 text-xs font-bold">
-                      <Shield className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Administrador</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      Coordinador Musical
-                    </div>
-                    <div className="text-[9px] text-slate-500 mt-0.5 font-mono">
-                      coordinador / musica123
-                    </div>
-                  </button>
-
-                  {/* Usuario Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const usuario = users.find((u) => u.role === 'usuario') || users[2];
-                      handleQuickLogin(usuario);
-                    }}
-                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-400/30 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-bold">
-                      <User className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Usuario</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      Músico / Corista
-                    </div>
-                    <div className="text-[9px] text-slate-500 mt-0.5 font-mono">
-                      participante / canto123
-                    </div>
-                  </button>
+                {/* Nota de seguridad ministerial */}
+                <div className="mt-5 p-3 rounded-2xl bg-black/30 border border-white/5 text-center">
+                  <p className="text-[11px] text-slate-400">
+                    🔒 <strong className="text-slate-300">Acceso Restringido:</strong> Cada músico o director debe ingresar únicamente con las credenciales asignadas por la Dirección Central.
+                  </p>
                 </div>
               </div>
-            </div>
 
             {/* Bottom info banner */}
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
