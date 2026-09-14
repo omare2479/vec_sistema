@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Crown,
   Shield,
@@ -21,10 +21,13 @@ import {
   EyeOff,
   Image as ImageIcon,
   Camera,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { UserAccount, UserRole, ThemeMode } from '../types';
 import { THEMES } from '../utils/theme';
+import { uploadImageToSupabase } from '../utils/supabaseUpload';
 
 interface UserManagementViewProps {
   currentTheme: ThemeMode;
@@ -69,6 +72,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
   const [formPhone, setFormPhone] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formStatus, setFormStatus] = useState<'activo' | 'inactivo'>('activo');
+  const [formAvatarUrl, setFormAvatarUrl] = useState<string>('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isCentralAdmin = currentUser?.role === 'admin_central';
   const isAdminOrHigher = isCentralAdmin || currentUser?.role === 'admin';
@@ -102,6 +108,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormPhone('');
     setFormNotes('');
     setFormStatus('activo');
+    setFormAvatarUrl('');
     setEditingUserId(null);
   };
 
@@ -121,7 +128,33 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormPhone(user.phone || '');
     setFormNotes(user.notes || '');
     setFormStatus(user.status);
+    setFormAvatarUrl(user.avatarUrl || '');
     setIsCreateModalOpen(true);
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // Intentar subir a Supabase
+      const uploadedUrl = await uploadImageToSupabase(file);
+      if (uploadedUrl) {
+        setFormAvatarUrl(uploadedUrl);
+      } else {
+        // Fallback local como base64 dataUrl
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setFormAvatarUrl((ev.target?.result as string) || '');
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.warn('Error al procesar foto de perfil:', err);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleSubmitAccountForm = (e: React.FormEvent) => {
@@ -143,6 +176,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         phone: formPhone.trim() || undefined,
         notes: formNotes.trim() || undefined,
         status: formStatus,
+        avatarUrl: formAvatarUrl.trim() || undefined,
       });
       setFeedbackMsg(`Cuenta de "${formName}" actualizada exitosamente.`);
     } else {
@@ -154,6 +188,13 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         alert('Ese nombre de usuario ya está registrado. Elige otro.');
         return;
       }
+
+      const defaultAvatar =
+        formRole === 'admin_central'
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+          : formRole === 'admin'
+          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80';
 
       const newAccount: UserAccount = {
         id: `usr-${Date.now()}`,
@@ -167,12 +208,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
         notes: formNotes.trim() || undefined,
         status: formStatus,
         createdAt: new Date().toISOString().split('T')[0],
-        avatarUrl:
-          formRole === 'admin_central'
-            ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-            : formRole === 'admin'
-            ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+        avatarUrl: formAvatarUrl.trim() || defaultAvatar,
       };
       onCreateUser(newAccount);
       setFeedbackMsg(`¡Nueva cuenta creada: ${newAccount.name} (${getRoleBadgeInfo(newAccount.role).label})!`);
@@ -457,14 +493,24 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               <div>
                 {/* Header: Avatar, Name, Role Badge */}
                 <div className="flex items-start gap-3.5">
-                  <div className="relative">
+                  <div className="relative group/avatar">
                     <img
                       src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={user.name}
-                      className="w-13 h-13 rounded-2xl object-cover border border-white/20 shadow-md"
+                      className="w-13 h-13 rounded-2xl object-cover border border-white/20 shadow-md transition-all group-hover/avatar:brightness-75"
                     />
+                    {isAdminOrHigher && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(user)}
+                        className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                        title="Cambiar foto de este usuario"
+                      >
+                        <Camera className="w-4 h-4 text-amber-300 drop-shadow" />
+                      </button>
+                    )}
                     <div
-                      className={`absolute -bottom-1 -right-1 p-1 rounded-full border border-black text-slate-950 ${
+                      className={`absolute -bottom-1 -right-1 p-1 rounded-full border border-black text-slate-950 z-10 ${
                         user.role === 'admin_central'
                           ? 'bg-amber-400'
                           : user.role === 'admin'
@@ -627,6 +673,91 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             </div>
 
             <form onSubmit={handleSubmitAccountForm} className="space-y-4 mt-5">
+              {/* Profile Photo Uploader */}
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4">
+                <div className="relative group">
+                  <img
+                    src={
+                      formAvatarUrl ||
+                      (formRole === 'admin_central'
+                        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+                        : formRole === 'admin'
+                        ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
+                        : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80')
+                    }
+                    alt="Foto de perfil"
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400/40 shadow-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={isUploadingAvatar}
+                    className="absolute inset-0 rounded-2xl bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity cursor-pointer disabled:opacity-100"
+                    title="Cambiar foto de perfil"
+                  >
+                    {isUploadingAvatar ? (
+                      <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="w-5 h-5 text-amber-300 mb-0.5" />
+                        <span>Subir</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">Foto de Perfil</span>
+                    {formAvatarUrl && (
+                      <span className="text-[10px] text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                        Foto personalizada
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Sube una foto real desde tu dispositivo (JPG, PNG). Se guardará en la nube para que todos la vean.
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={isUploadingAvatar}
+                      className="px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isUploadingAvatar ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Subiendo a la nube...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Seleccionar Foto</span>
+                        </>
+                      )}
+                    </button>
+                    {formAvatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFormAvatarUrl('')}
+                        className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-rose-300 border border-white/10 text-xs transition-colors cursor-pointer"
+                        title="Quitar foto personalizada y usar por defecto"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
