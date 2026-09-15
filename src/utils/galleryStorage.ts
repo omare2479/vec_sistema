@@ -44,8 +44,12 @@ export async function loadAllGalleryPhotos(): Promise<GalleryPhoto[]> {
 
     if (!error && data && data.length > 0) {
       const cloudPhotos = data.map(mapDbToPhoto);
-      // Guardar respaldo local
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudPhotos));
+      // Guardar respaldo local (con try-catch por si supera la cuota en celulares)
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudPhotos));
+      } catch (storageErr) {
+        console.warn('No se pudo guardar en localStorage (cuota superada):', storageErr);
+      }
       return cloudPhotos;
     }
 

@@ -123,6 +123,13 @@ export default function App() {
     setGalleryPhotos(fresh);
   };
 
+  const handleRefreshPhotos = async () => {
+    const fresh = await loadAllGalleryPhotos();
+    if (fresh && fresh.length > 0) {
+      setGalleryPhotos(fresh);
+    }
+  };
+
   // User Accounts & Authentication State
   const [users, setUsers] = useState<UserAccount[]>(() => loadUsersFromStorage());
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => loadCurrentSession());
@@ -505,6 +512,7 @@ export default function App() {
           onSetAsWallpaper={(url) => {
             handleSaveMinistryImage(url);
           }}
+          onRefreshPhotos={handleRefreshPhotos}
         />
       )}
     </div>

@@ -13,7 +13,8 @@ import {
   RotateCcw,
   CheckCircle2,
   Calendar,
-  Tag
+  Tag,
+  RefreshCw,
 } from 'lucide-react';
 import { ThemeMode, GalleryPhoto, PhotoCategory } from '../types';
 import { THEMES } from '../utils/theme';
@@ -27,6 +28,7 @@ interface GalleryModalProps {
   onDeletePhoto: (id: string) => void;
   onResetToDefault: () => void;
   onSetAsWallpaper?: (imageUrl: string) => void;
+  onRefreshPhotos?: () => Promise<void>;
 }
 
 export const GalleryModal: React.FC<GalleryModalProps> = ({
@@ -37,10 +39,12 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
   onDeletePhoto,
   onResetToDefault,
   onSetAsWallpaper,
+  onRefreshPhotos,
 }) => {
   const theme = THEMES[currentTheme];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<PhotoCategory>('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
@@ -180,6 +184,27 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onRefreshPhotos && (
+              <button
+                onClick={async () => {
+                  setIsRefreshing(true);
+                  try {
+                    await onRefreshPhotos();
+                    setStatusMessage('¡Galería actualizada con la nube!');
+                    setTimeout(() => setStatusMessage(null), 3000);
+                  } finally {
+                    setIsRefreshing(false);
+                  }
+                }}
+                disabled={isRefreshing}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/15 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Actualizar fotos desde la nube"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
+            )}
+
             <button
               onClick={handleRandomSelect}
               className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-sky-500/20 hover:from-amber-500/30 hover:to-sky-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
