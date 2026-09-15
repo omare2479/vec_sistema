@@ -78,9 +78,12 @@ export async function saveMultipleGalleryPhotos(photos: GalleryPhoto[]): Promise
   // 1. Guardar en Supabase en la nube
   try {
     const rows = photos.map(mapPhotoToDb);
-    await supabase.from('gallery_photos').upsert(rows, { onConflict: 'id' });
+    const { error } = await supabase.from('gallery_photos').upsert(rows, { onConflict: 'id' });
+    if (error) {
+      console.error('Error al guardar fotos en Supabase:', error.message, error.details);
+    }
   } catch (err) {
-    console.warn('Error al guardar fotos en Supabase:', err);
+    console.error('Error de red al guardar fotos en Supabase:', err);
   }
 
   // 2. Respaldo en localStorage
