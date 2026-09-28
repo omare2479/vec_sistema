@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { UserAccount, UserRole, ThemeMode } from '../types';
 import { THEMES } from '../utils/theme';
-import { fetchUsersFromCloud } from '../data/userAccountsData';
+import { fetchUsersFromCloud, INITIAL_USER_ACCOUNTS } from '../data/userAccountsData';
 
 interface LoginEntranceModalProps {
   currentTheme: ThemeMode;

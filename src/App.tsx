@@ -46,9 +46,9 @@ export default function App() {
   // Song state with centralized persistence (localStorage + Supabase cloud)
   const [songs, setSongs] = useState<Song[]>(() => loadSongsFromStorageSync());
 
-  // User Accounts & Authentication State
+  // User Accounts & Authentication State - Carga directa libre sin usuario
   const [users, setUsers] = useState<UserAccount[]>(() => loadUsersFromStorage());
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => loadCurrentSession());
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
   // Authenticated administrator flag (only admin_central or admin)
   const isAdmin = Boolean(currentUser && (currentUser.role === 'admin_central' || currentUser.role === 'admin'));
@@ -85,6 +85,18 @@ export default function App() {
 
   // Load photos, songs, and users from cloud on mount
   useEffect(() => {
+    // 0. Purgar cualquier residuo de sesiones o cuentas antiguas
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('vec_ministerio_session_v1');
+        localStorage.removeItem('vec_ministerio_session_v2');
+        localStorage.removeItem('vec_ministerio_users_v1');
+        localStorage.removeItem('vec_ministerio_users_v2');
+      } catch {
+        // ignore
+      }
+    }
+
     // 1. Cargar fotos de galería
     loadAllGalleryPhotos().then((photos) => {
       setGalleryPhotos(photos);

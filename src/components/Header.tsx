@@ -283,117 +283,37 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* User Profile / Login Button */}
-          {currentUser ? (
-            <div className="relative">
+          {/* Administrator Status / Login Button */}
+          {isAdmin && currentUser ? (
+            <div className="flex items-center gap-2">
               <button
-                type="button"
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/15 transition-all cursor-pointer group"
+                onClick={() => onNavChange('usuarios')}
+                className="px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                title="Abrir Panel de Administración"
               >
-                <div className="relative">
-                  <img
-                    alt={currentUser.name}
-                    className="w-7 h-7 rounded-full object-cover ring-1 ring-amber-400/40"
-                    src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                  />
-                  {RoleIcon && (
-                    <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-slate-900 border border-black flex items-center justify-center">
-                      <RoleIcon className="w-2.5 h-2.5 text-amber-400" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs font-bold text-white truncate max-w-[90px]">
-                    {currentUser.name.split(' ')[0]}
-                  </span>
-                  <span className="text-[9px] text-amber-300 font-semibold leading-tight">
-                    {roleBadge?.label}
-                  </span>
-                </div>
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>Administrador</span>
               </button>
 
-              {/* User Dropdown Menu */}
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#081028] border border-white/20 p-3 shadow-2xl z-50 animate-scaleIn">
-                  <div className="flex items-center gap-3 pb-3 border-b border-white/10">
-                    <img
-                      src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                      alt={currentUser.name}
-                      className="w-11 h-11 rounded-xl object-cover border border-white/20 shadow-md"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-white truncate">{currentUser.name}</h4>
-                      <p className="text-[10px] text-amber-300 font-mono">@{currentUser.username}</p>
-                      <div className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border border-white/10 ${roleBadge?.badgeClass}`}>
-                        {RoleIcon && <RoleIcon className="w-2.5 h-2.5" />}
-                        <span>{roleBadge?.label}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="py-2 flex flex-col gap-1 text-xs">
-                    <button
-                      onClick={() => {
-                        onNavChange('usuarios');
-                        setShowUserMenu(false);
-                      }}
-                      className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-white/10 hover:text-white transition-colors text-left cursor-pointer"
-                    >
-                      <Users className="w-4 h-4 text-amber-400" />
-                      <span>Gestión de Cuentas & Roles</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        onOpenLoginModal();
-                        setShowUserMenu(false);
-                      }}
-                      className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-white/10 hover:text-white transition-colors text-left cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4 text-sky-400" />
-                      <span>Ver Pantalla de Entrada Sagrada</span>
-                    </button>
-
-                    {onOpenChangeImageModal && (
-                      <button
-                        onClick={() => {
-                          onOpenChangeImageModal();
-                          setShowUserMenu(false);
-                        }}
-                        className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:bg-white/10 hover:text-white transition-colors text-left cursor-pointer"
-                      >
-                        <ImageIcon className="w-4 h-4 text-emerald-400" />
-                        <span>Cambiar Imagen del Ministerio</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-white/10">
-                    <button
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        onLogout();
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition-all cursor-pointer"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Cerrar Sesión / Salir</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={onLogout}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Cerrar sesión de administrador y volver a modo visitante"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cerrar Sesión</span>
+              </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={onOpenLoginModal}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              title="Acceso exclusivo para administradores del ministerio"
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              title="Acceso exclusivo para el Administrador del Ministerio"
             >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span>Acceso Admin</span>
+              <Shield className="w-4 h-4 text-slate-950" />
+              <span>Administrador</span>
             </button>
           )}
         </div>
