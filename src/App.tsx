@@ -100,7 +100,11 @@ export default function App() {
       }
     });
 
-    // 3. Cargar usuarios oficiales desde Supabase
+    // 3. Cargar usuarios oficiales administradores (depurando usuarios antiguos)
+    const cleanAdmins = loadUsersFromStorage();
+    setUsers(cleanAdmins);
+    saveUsersToStorage(cleanAdmins);
+
     fetchUsersFromCloud().then((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
         setUsers(cloudUsers);

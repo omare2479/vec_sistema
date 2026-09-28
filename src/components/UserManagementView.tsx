@@ -106,7 +106,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
     setFormUsername('');
     setFormEmail('');
     setFormPassword('');
-    setFormRole('usuario');
+    setFormRole('admin');
     setFormInstrument('');
     setFormPhone('');
     setFormNotes('');
@@ -270,10 +270,10 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
               <span>Gestión Ministerial de Accesos</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Cuentas de Usuarios & Administradores
+              Gestión de Administradores
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-              Crea, administra y otorga roles de <span className="text-amber-300 font-semibold">Administrador Central</span>, <span className="text-sky-300 font-semibold">Administrador</span> y <span className="text-emerald-300 font-semibold">Usuarios / Músicos</span> para cada participante de Voces en Cristo.
+              Crea y administra las cuentas autorizadas para gestionar el repertorio, archivos y contenidos de Voces en Cristo. Los visitantes consultan el sistema libremente sin usuario ni registro.
             </p>
           </div>
 
@@ -389,17 +389,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           </div>
         </div>
 
-        {/* Summary Metrics Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10">
+        {/* Summary Metrics Cards (Solo Administradores) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-white/10">
           <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex flex-col">
-            <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Participantes</span>
+            <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Administradores</span>
             <span className="text-2xl font-black text-white mt-1">{totalCount}</span>
           </div>
 
           <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/20 flex flex-col">
             <span className="text-[11px] text-amber-300 uppercase font-semibold flex items-center gap-1">
               <Crown className="w-3 h-3 text-amber-400" />
-              Admin Central
+              Admin Central / Director
             </span>
             <span className="text-2xl font-black text-amber-300 mt-1">{centralAdminsCount}</span>
           </div>
@@ -407,17 +407,9 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
           <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-400/20 flex flex-col">
             <span className="text-[11px] text-sky-300 uppercase font-semibold flex items-center gap-1">
               <Shield className="w-3 h-3 text-sky-400" />
-              Administradores
+              Administradores de Repertorio
             </span>
             <span className="text-2xl font-black text-sky-300 mt-1">{adminsCount}</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-400/20 flex flex-col">
-            <span className="text-[11px] text-emerald-300 uppercase font-semibold flex items-center gap-1">
-              <User className="w-3 h-3 text-emerald-400" />
-              Usuarios / Músicos
-            </span>
-            <span className="text-2xl font-black text-emerald-300 mt-1">{standardUsersCount}</span>
           </div>
         </div>
       </div>
@@ -466,19 +458,8 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Shield className="w-3 h-3 text-sky-400" />
-            Admin ({adminsCount})
-          </button>
-          <button
-            onClick={() => setSelectedRoleFilter('usuario')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-all flex items-center gap-1 ${
-              selectedRoleFilter === 'usuario'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-bold'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <User className="w-3 h-3 text-emerald-400" />
-            Usuarios ({standardUsersCount})
+            <Shield className="w-3.5 h-3.5 text-sky-400" />
+            <span>Admin ({adminsCount})</span>
           </button>
         </div>
       </div>
@@ -867,24 +848,7 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
                 <label className="block text-xs font-semibold text-slate-300 mb-2">
                   Seleccionar Nivel de Acceso / Rol:
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormRole('usuario')}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                      formRole === 'usuario'
-                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                        : 'bg-black/30 border-white/10 text-slate-400 hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold">
-                      <User className="w-3.5 h-3.5" />
-                      <span>Usuario</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 leading-tight">
-                      Músico / Salmista
-                    </span>
-                  </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                   <button
                     type="button"

@@ -1,6 +1,7 @@
 import { UserAccount } from '../types';
 import { supabase } from '../utils/supabaseClient';
 
+// Única cuenta oficial inicial de Administrador Central
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   {
     id: 'usr-central-1',
@@ -15,62 +16,6 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     status: 'activo',
     phone: '+51 987 654 321',
     notes: 'Administrador Central con permisos absolutos en el Ministerio VEC'
-  },
-  {
-    id: 'usr-admin-1',
-    username: 'coordinador',
-    name: 'Carlos Méndez',
-    email: 'coordinador@vec.catolico',
-    role: 'admin',
-    instrument: 'Coordinador Musical & Guitarra Líder',
-    password: 'musica123',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-02-01',
-    status: 'activo',
-    phone: '+51 991 223 344',
-    notes: 'Administrador de repertorios, partituras y tonalidades'
-  },
-  {
-    id: 'usr-usuario-1',
-    username: 'participante',
-    name: 'Mariana Flores',
-    email: 'mariana.voz@vec.catolico',
-    role: 'usuario',
-    instrument: 'Voz Principal & Salmista',
-    password: 'canto123',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-02-15',
-    status: 'activo',
-    phone: '+51 977 445 566',
-    notes: 'Participante ministerial activa en coro y adoración'
-  },
-  {
-    id: 'usr-usuario-2',
-    username: 'david.bajo',
-    name: 'David Silva',
-    email: 'david.bajo@vec.catolico',
-    role: 'usuario',
-    instrument: 'Bajo Eléctrico de 5 Cuerdas',
-    password: 'bajo123',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-03-01',
-    status: 'activo',
-    phone: '+51 955 889 900',
-    notes: 'Bajista oficial de conciertos de adoración'
-  },
-  {
-    id: 'usr-usuario-3',
-    username: 'lucia.teclado',
-    name: 'Lucía Morales',
-    email: 'lucia.piano@vec.catolico',
-    role: 'usuario',
-    instrument: 'Piano & Sintetizador Litúrgico',
-    password: 'piano123',
-    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
-    createdAt: '2026-03-05',
-    status: 'activo',
-    phone: '+51 966 112 233',
-    notes: 'Armonías y colchones de adoración'
   }
 ];
 
@@ -113,19 +58,29 @@ function mapUserToDb(u: UserAccount) {
   };
 }
 
+/**
+ * Carga usuarios administradores desde localStorage, eliminando cualquier cuenta que no sea administrador.
+ */
 export function loadUsersFromStorage(): UserAccount[] {
   try {
     const raw = localStorage.getItem(STORAGE_USERS_KEY);
     if (!raw) return INITIAL_USER_ACCOUNTS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_USER_ACCOUNTS;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Filtrar estrictamente solo cuentas con rol de administrador
+      const onlyAdmins = parsed.filter((u: UserAccount) => u.role === 'admin_central' || u.role === 'admin');
+      if (onlyAdmins.length > 0) {
+        return onlyAdmins;
+      }
+    }
+    return INITIAL_USER_ACCOUNTS;
   } catch {
     return INITIAL_USER_ACCOUNTS;
   }
 }
 
 /**
- * Carga los usuarios desde la nube de Supabase. Si la tabla está vacía, la inicializa con las cuentas por defecto.
+ * Carga los administradores desde Supabase si está disponible.
  */
 export async function fetchUsersFromCloud(): Promise<UserAccount[]> {
   try {
@@ -134,25 +89,21 @@ export async function fetchUsersFromCloud(): Promise<UserAccount[]> {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.warn('Error al consultar usuarios en Supabase:', error.message);
-      return loadUsersFromStorage();
-    }
+    if (!error && data && data.length > 0) {
+      const cloudAdmins = data
+        .map(mapDbToUser)
+        .filter((u: UserAccount) => u.role === 'admin_central' || u.role === 'admin');
 
-    if (data && data.length > 0) {
-      const cloudUsers = data.map(mapDbToUser);
-      // Actualizar copia local
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(cloudUsers));
-      return cloudUsers;
-    } else {
-      // Si la base de datos está vacía, subir los iniciales a Supabase
-      await syncAllUsersToCloud(INITIAL_USER_ACCOUNTS);
-      return INITIAL_USER_ACCOUNTS;
+      if (cloudAdmins.length > 0) {
+        localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(cloudAdmins));
+        return cloudAdmins;
+      }
     }
   } catch (err) {
     console.warn('Excepción al conectar con Supabase users:', err);
-    return loadUsersFromStorage();
   }
+
+  return loadUsersFromStorage();
 }
 
 export async function saveUserToCloud(user: UserAccount): Promise<void> {
@@ -172,28 +123,29 @@ export async function deleteUserFromCloud(userId: string): Promise<void> {
   }
 }
 
-export async function syncAllUsersToCloud(usersList: UserAccount[]): Promise<void> {
-  try {
-    const rows = usersList.map(mapUserToDb);
-    await supabase.from('ministry_users').upsert(rows, { onConflict: 'id' });
-  } catch (err) {
-    console.warn('Error en syncAllUsersToCloud:', err);
-  }
-}
-
 export function saveUsersToStorage(users: UserAccount[]): void {
   try {
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    // Asegurar que solo se guarden administradores
+    const onlyAdmins = users.filter((u) => u.role === 'admin_central' || u.role === 'admin');
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(onlyAdmins.length > 0 ? onlyAdmins : INITIAL_USER_ACCOUNTS));
   } catch (err) {
     console.warn('Error al guardar usuarios en localStorage', err);
   }
 }
 
+/**
+ * Carga la sesión actual. Si no es administrador, la invalida para que el acceso sea libre como visitante.
+ */
 export function loadCurrentSession(): UserAccount | null {
   try {
     const raw = localStorage.getItem(STORAGE_SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed && (parsed.role === 'admin_central' || parsed.role === 'admin')) {
+      return parsed;
+    }
+    localStorage.removeItem(STORAGE_SESSION_KEY);
+    return null;
   } catch {
     return null;
   }
@@ -201,7 +153,7 @@ export function loadCurrentSession(): UserAccount | null {
 
 export function saveCurrentSession(user: UserAccount | null): void {
   try {
-    if (user) {
+    if (user && (user.role === 'admin_central' || user.role === 'admin')) {
       localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
     } else {
       localStorage.removeItem(STORAGE_SESSION_KEY);
