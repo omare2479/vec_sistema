@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { MainNavTab, ThemeMode, Song, UserAccount, GalleryPhoto } from './types';
 import { THEMES } from './utils/theme';
-import { INITIAL_CONCERT_SONGS } from './data/mockData';
+import {
+  loadAllSongs,
+  loadSongsFromStorageSync,
+  saveSongsToStorage,
+  deleteSongFromCloud,
+} from './utils/songStorage';
 import {
   loadUsersFromStorage,
   saveUsersToStorage,
@@ -29,7 +34,7 @@ import { StageModeModal } from './components/StageModeModal';
 import { LoginEntranceModal } from './components/LoginEntranceModal';
 import { ChangeMinistryImageModal } from './components/ChangeMinistryImageModal';
 import { GalleryModal } from './components/GalleryModal';
-import { Image as ImageIcon, Sparkles, Shuffle } from 'lucide-react';
+import { Image as ImageIcon, Sparkles, Shuffle, Shield, Lock, ArrowLeft } from 'lucide-react';
 
 const STORAGE_CUSTOM_IMAGE_KEY = 'vec_custom_ministry_image_v1';
 const STORAGE_WALLPAPER_MODE_KEY = 'vec_wallpaper_mode_v1';
@@ -37,9 +42,21 @@ const STORAGE_WALLPAPER_MODE_KEY = 'vec_wallpaper_mode_v1';
 export default function App() {
   const [currentNav, setCurrentNav] = useState<MainNavTab>('repertorio');
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>('zafiro');
-  const [songs, setSongs] = useState<Song[]>(INITIAL_CONCERT_SONGS);
 
-  // Ministry Image State (defaults to the untouched original /vec.jpg, can be customized or restored)
+  // Song state with centralized persistence (localStorage + Supabase cloud)
+  const [songs, setSongs] = useState<Song[]>(() => loadSongsFromStorageSync());
+
+  // User Accounts & Authentication State
+  const [users, setUsers] = useState<UserAccount[]>(() => loadUsersFromStorage());
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => loadCurrentSession());
+
+  // Authenticated administrator flag (only admin_central or admin)
+  const isAdmin = Boolean(currentUser && (currentUser.role === 'admin_central' || currentUser.role === 'admin'));
+
+  // Entrance modal: open ONLY on demand when clicking "Acceso Admin"
+  const [isEntranceOpen, setIsEntranceOpen] = useState(false);
+
+  // Ministry Image State (defaults to /vec.jpg, can be customized or restored by admins)
   const [ministryImage, setMinistryImage] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(STORAGE_CUSTOM_IMAGE_KEY) || '/vec.jpg';
@@ -59,8 +76,16 @@ export default function App() {
   });
   const [randomPhotoIndex, setRandomPhotoIndex] = useState<number>(0);
 
-  // Load photos and users from cloud on mount
+  // Modal states
+  const [selectedChordSong, setSelectedChordSong] = useState<Song | null>(null);
+  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
+  const [stageModeIndex, setStageModeIndex] = useState<number | null>(null);
+
+  const theme = THEMES[currentTheme];
+
+  // Load photos, songs, and users from cloud on mount
   useEffect(() => {
+    // 1. Cargar fotos de galería
     loadAllGalleryPhotos().then((photos) => {
       setGalleryPhotos(photos);
       if (photos.length > 0) {
@@ -68,7 +93,14 @@ export default function App() {
       }
     });
 
-    // Cargar usuarios oficiales desde la nube central de Supabase
+    // 2. Cargar canciones centralizadas
+    loadAllSongs().then((cloudSongs) => {
+      if (cloudSongs && cloudSongs.length > 0) {
+        setSongs(cloudSongs);
+      }
+    });
+
+    // 3. Cargar usuarios oficiales desde Supabase
     fetchUsersFromCloud().then((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
         setUsers(cloudUsers);
@@ -77,7 +109,7 @@ export default function App() {
     });
   }, []);
 
-  // Soft timer to rotate random photo in the background and across system every 25 seconds
+  // Soft timer to rotate random photo in the background every 25 seconds
   useEffect(() => {
     if (galleryPhotos.length <= 1) return;
     const interval = setInterval(() => {
@@ -105,19 +137,52 @@ export default function App() {
     });
   };
 
+  // --- Centralized Song Actions (Admin Only) ---
+  const handleUpdateSongKey = (songId: string, newKey: string) => {
+    if (!isAdmin) return;
+    setSongs((prev) => {
+      const next = prev.map((s) => (s.id === songId ? { ...s, currentKey: newKey } : s));
+      saveSongsToStorage(next);
+      return next;
+    });
+  };
+
+  const handleAddSong = (newSong: Song) => {
+    if (!isAdmin) return;
+    setSongs((prev) => {
+      const next = [newSong, ...prev];
+      saveSongsToStorage(next);
+      return next;
+    });
+  };
+
+  const handleDeleteSong = (songId: string) => {
+    if (!isAdmin) return;
+    setSongs((prev) => {
+      const next = prev.filter((s) => s.id !== songId);
+      saveSongsToStorage(next);
+      return next;
+    });
+    deleteSongFromCloud(songId);
+  };
+
+  // --- Centralized Gallery Actions (Admin Only) ---
   const handleAddGalleryPhotos = async (newPhotos: GalleryPhoto[]) => {
+    if (!isAdmin) return;
     const updated = [...newPhotos, ...galleryPhotos];
     setGalleryPhotos(updated);
     await saveMultipleGalleryPhotos(updated);
   };
 
   const handleDeleteGalleryPhoto = async (id: string) => {
+    if (!isAdmin) return;
     const updated = galleryPhotos.filter((p) => p.id !== id);
     setGalleryPhotos(updated);
     await deletePhotoFromStorage(id);
   };
 
   const handleResetGalleryPhotos = async () => {
+    if (!isAdmin) return;
     await resetGalleryStorage();
     const fresh = await loadAllGalleryPhotos();
     setGalleryPhotos(fresh);
@@ -130,20 +195,9 @@ export default function App() {
     }
   };
 
-  // User Accounts & Authentication State
-  const [users, setUsers] = useState<UserAccount[]>(() => loadUsersFromStorage());
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => loadCurrentSession());
-  // Show entrance modal with apparition effect if not logged in or explicitly requested
-  const [isEntranceOpen, setIsEntranceOpen] = useState<boolean>(() => !loadCurrentSession());
-
-  // Modal states
-  const [selectedChordSong, setSelectedChordSong] = useState<Song | null>(null);
-  const [isAddSongOpen, setIsAddSongOpen] = useState(false);
-  const [stageModeIndex, setStageModeIndex] = useState<number | null>(null);
-
-  const theme = THEMES[currentTheme];
-
+  // --- Ministry Image Actions (Admin Only) ---
   const handleSaveMinistryImage = (newImage: string) => {
+    if (!isAdmin) return;
     setMinistryImage(newImage);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_CUSTOM_IMAGE_KEY, newImage);
@@ -151,22 +205,14 @@ export default function App() {
   };
 
   const handleResetMinistryImage = () => {
+    if (!isAdmin) return;
     setMinistryImage('/vec.jpg');
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_CUSTOM_IMAGE_KEY);
     }
   };
 
-  const handleUpdateSongKey = (songId: string, newKey: string) => {
-    setSongs((prev) =>
-      prev.map((s) => (s.id === songId ? { ...s, currentKey: newKey } : s))
-    );
-  };
-
-  const handleAddSong = (newSong: Song) => {
-    setSongs((prev) => [newSong, ...prev]);
-  };
-
+  // --- Authentication Handlers ---
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
     saveCurrentSession(user);
@@ -176,20 +222,24 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     saveCurrentSession(null);
-    setIsEntranceOpen(true);
+    if (currentNav === 'usuarios') {
+      setCurrentNav('repertorio');
+    }
   };
 
+  // --- Admin Account Management (Admin Only) ---
   const handleCreateUser = async (newAccount: UserAccount) => {
+    if (!isAdmin) return;
     setUsers((prev) => {
       const next = [newAccount, ...prev];
       saveUsersToStorage(next);
       return next;
     });
-    // Guardar en la nube central de Supabase para que todos los músicos lo vean
     await saveUserToCloud(newAccount);
   };
 
   const handleUpdateUser = async (id: string, updates: Partial<UserAccount>) => {
+    if (!isAdmin) return;
     let updatedAccount: UserAccount | null = null;
     setUsers((prev) => {
       const next = prev.map((u) => {
@@ -209,20 +259,19 @@ export default function App() {
       saveCurrentSession(updated);
     }
 
-    // Actualizar en la nube central de Supabase
     if (updatedAccount) {
       await saveUserToCloud(updatedAccount);
     }
   };
 
   const handleDeleteUser = async (id: string) => {
+    if (!isAdmin) return;
     setUsers((prev) => {
       const next = prev.filter((u) => u.id !== id);
       saveUsersToStorage(next);
       return next;
     });
 
-    // Eliminar de la nube central de Supabase
     await deleteUserFromCloud(id);
 
     if (currentUser?.id === id) {
@@ -248,7 +297,7 @@ export default function App() {
         }}
       />
 
-      {/* Fondo de Pantalla Central del Ministerio VEC (Wallpaper en el centro del app) */}
+      {/* Central Ministry Wallpaper */}
       <div 
         id="vec-center-wallpaper"
         className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center overflow-hidden"
@@ -283,7 +332,7 @@ export default function App() {
       {/* Sacred Side Watermarks */}
       <SideWatermarks />
 
-      {/* Fixed Application Header with Auth & Navigation */}
+      {/* Fixed Application Header with Navigation */}
       <Header
         currentNav={currentNav}
         onNavChange={setCurrentNav}
@@ -292,10 +341,13 @@ export default function App() {
         currentUser={currentUser}
         ministryImage={ministryImage}
         onOpenLoginModal={() => setIsEntranceOpen(true)}
-        onOpenChangeImageModal={() => setIsChangeImageOpen(true)}
+        onOpenChangeImageModal={() => {
+          if (isAdmin) setIsChangeImageOpen(true);
+        }}
         onLogout={handleLogout}
         onOpenGallery={() => setIsGalleryOpen(true)}
         photoCount={galleryPhotos.length}
+        isAdmin={isAdmin}
       />
 
       {/* Main Screen Content */}
@@ -306,11 +358,15 @@ export default function App() {
             songs={songs}
             onUpdateSongKey={handleUpdateSongKey}
             onAddSong={handleAddSong}
+            onDeleteSong={handleDeleteSong}
             onOpenChordModal={(song) => setSelectedChordSong(song)}
-            onOpenAddModal={() => setIsAddSongOpen(true)}
+            onOpenAddModal={() => {
+              if (isAdmin) setIsAddSongOpen(true);
+            }}
             onOpenStageMode={(idx) => setStageModeIndex(idx)}
             photos={galleryPhotos}
             onOpenGallery={() => setIsGalleryOpen(true)}
+            isAdmin={isAdmin}
           />
         )}
 
@@ -331,19 +387,47 @@ export default function App() {
         )}
 
         {currentNav === 'usuarios' && (
-          <UserManagementView
-            currentTheme={currentTheme}
-            users={users}
-            currentUser={currentUser}
-            ministryImage={ministryImage}
-            onOpenChangeImageModal={() => setIsChangeImageOpen(true)}
-            onResetMinistryImage={handleResetMinistryImage}
-            onCreateUser={handleCreateUser}
-            onUpdateUser={handleUpdateUser}
-            onDeleteUser={handleDeleteUser}
-            onOpenEntranceModal={() => setIsEntranceOpen(true)}
-            onRefreshUsers={handleRefreshUsers}
-          />
+          isAdmin ? (
+            <UserManagementView
+              currentTheme={currentTheme}
+              users={users}
+              currentUser={currentUser}
+              ministryImage={ministryImage}
+              onOpenChangeImageModal={() => setIsChangeImageOpen(true)}
+              onResetMinistryImage={handleResetMinistryImage}
+              onCreateUser={handleCreateUser}
+              onUpdateUser={handleUpdateUser}
+              onDeleteUser={handleDeleteUser}
+              onOpenEntranceModal={() => setIsEntranceOpen(true)}
+              onRefreshUsers={handleRefreshUsers}
+            />
+          ) : (
+            <div className="w-full max-w-lg mt-12 p-8 rounded-3xl bg-[#091129]/95 border border-white/15 text-center flex flex-col items-center gap-4 shadow-2xl backdrop-blur-xl animate-fadeIn">
+              <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shadow-lg">
+                <Lock className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Panel de Administración Exclusivo</h2>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-sm">
+                Esta sección está reservada exclusivamente para directores y administradores de Voces en Cristo. Los visitantes pueden consultar los cantos, audios, partituras y comunidad libremente sin iniciar sesión.
+              </p>
+              <div className="flex items-center gap-3 mt-2 flex-wrap justify-center">
+                <button
+                  onClick={() => setIsEntranceOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-md cursor-pointer transition-all"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Acceso de Administrador</span>
+                </button>
+                <button
+                  onClick={() => setCurrentNav('repertorio')}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all border border-white/15"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Repertorio</span>
+                </button>
+              </div>
+            </div>
+          )
         )}
       </main>
 
@@ -428,19 +512,22 @@ export default function App() {
               Evangelio
             </button>
             <span>•</span>
-            <button
-              onClick={() => setCurrentNav('usuarios')}
-              className="hover:text-amber-400 transition-colors cursor-pointer text-amber-300/80"
-            >
-              Cuentas & Roles
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => setIsEntranceOpen(true)}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              Entrada Sagrada
-            </button>
+            {isAdmin ? (
+              <button
+                onClick={() => setCurrentNav('usuarios')}
+                className="hover:text-amber-400 transition-colors cursor-pointer text-amber-300 font-bold"
+              >
+                Panel de Administración
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEntranceOpen(true)}
+                className="hover:text-amber-400 transition-colors cursor-pointer text-slate-400 flex items-center gap-1"
+              >
+                <Shield className="w-3 h-3 text-amber-400" />
+                <span>Acceso Admin</span>
+              </button>
+            )}
           </div>
         </div>
       </footer>
@@ -453,15 +540,16 @@ export default function App() {
           currentUser={currentUser}
           ministryImage={ministryImage}
           onLoginSuccess={handleLoginSuccess}
-          onRegisterUser={handleCreateUser}
-          onOpenChangeImageModal={() => setIsChangeImageOpen(true)}
+          onOpenChangeImageModal={() => {
+            if (isAdmin) setIsChangeImageOpen(true);
+          }}
           onClose={() => setIsEntranceOpen(false)}
-          canCloseWithoutLogin={currentUser !== null}
+          canCloseWithoutLogin={true}
         />
       )}
 
-      {/* Change Ministry Image Modal */}
-      {isChangeImageOpen && (
+      {/* Change Ministry Image Modal (Admin Only) */}
+      {isAdmin && isChangeImageOpen && (
         <ChangeMinistryImageModal
           currentTheme={currentTheme}
           currentImage={ministryImage}
@@ -471,7 +559,7 @@ export default function App() {
         />
       )}
 
-      {/* Chord & Lyrics Viewer Modal */}
+      {/* Chord & Lyrics Viewer Modal (Public Read-Only) */}
       {selectedChordSong && (
         <ChordViewerModal
           song={selectedChordSong}
@@ -480,8 +568,8 @@ export default function App() {
         />
       )}
 
-      {/* Add Song to Setlist Modal */}
-      {isAddSongOpen && (
+      {/* Add Song to Setlist Modal (Admin Only) */}
+      {isAdmin && isAddSongOpen && (
         <AddSongModal
           currentTheme={currentTheme}
           onClose={() => setIsAddSongOpen(false)}
@@ -489,7 +577,7 @@ export default function App() {
         />
       )}
 
-      {/* Stage Teleprompter Fullscreen Mode */}
+      {/* Stage Teleprompter Fullscreen Mode (Public Read-Only) */}
       {stageModeIndex !== null && (
         <StageModeModal
           songs={songs}
@@ -499,7 +587,7 @@ export default function App() {
         />
       )}
 
-      {/* Gallery Modal with Upload, Fullscreen View, Wallpaper Setting, and Filters */}
+      {/* Gallery Modal */}
       {isGalleryOpen && (
         <GalleryModal
           isOpen={isGalleryOpen}
@@ -509,10 +597,9 @@ export default function App() {
           onAddPhotos={handleAddGalleryPhotos}
           onDeletePhoto={handleDeleteGalleryPhoto}
           onResetToDefault={handleResetGalleryPhotos}
-          onSetAsWallpaper={(url) => {
-            handleSaveMinistryImage(url);
-          }}
+          onSetAsWallpaper={isAdmin ? handleSaveMinistryImage : undefined}
           onRefreshPhotos={handleRefreshPhotos}
+          isAdmin={isAdmin}
         />
       )}
     </div>

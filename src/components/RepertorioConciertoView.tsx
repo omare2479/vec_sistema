@@ -17,8 +17,10 @@ interface RepertorioConciertoViewProps {
   songs: Song[];
   onUpdateSongKey: (songId: string, newKey: string) => void;
   onAddSong?: (newSong: Song) => void;
+  onDeleteSong?: (songId: string) => void;
   photos?: GalleryPhoto[];
   onOpenGallery?: () => void;
+  isAdmin?: boolean;
 }
 
 const MUSICAL_KEYS = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
@@ -31,8 +33,10 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   songs,
   onUpdateSongKey,
   onAddSong,
+  onDeleteSong,
   photos = [],
   onOpenGallery,
+  isAdmin = false,
 }) => {
   const theme = THEMES[currentTheme];
   const [activeSubTab, setActiveSubTab] = useState<RepertorioSubTab>('concierto');
@@ -335,31 +339,36 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 text-xs font-bold transition-all border border-amber-400/40 shadow-sm cursor-pointer"
-                title="Importar partitura o cifrado en archivo PDF o Word (.doc/.docx)"
-              >
-                <FileText className="w-4 h-4 text-amber-400" />
-                <span>Importar PDF / DOC</span>
-              </button>
+              {/* Opciones de creación y carga (Exclusivo Administrador) */}
+              {isAdmin && (
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 text-xs font-bold transition-all border border-amber-400/40 shadow-sm cursor-pointer"
+                  title="Importar partitura o cifrado en archivo PDF o Word (.doc/.docx)"
+                >
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  <span>Importar PDF / DOC</span>
+                </button>
+              )}
 
               <button
                 onClick={() => onOpenStageMode(0)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 cursor-pointer"
                 title="Abrir teleprompter de escenario"
               >
                 <span className="material-symbols-outlined text-[16px]">visibility</span>
                 <span>Modo Escenario</span>
               </button>
 
-              <button
-                onClick={onOpenAddModal}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all hover:brightness-110 active:scale-95 cursor-pointer ${theme.tabActiveBg} ${theme.tabActiveText}`}
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                <span>Agendar Cantos</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={onOpenAddModal}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all hover:brightness-110 active:scale-95 cursor-pointer ${theme.tabActiveBg} ${theme.tabActiveText}`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  <span>Agendar Cantos</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -497,29 +506,38 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
 
                   {/* Interactive Controls Bar: Transpose, Chords Viewer, Audio Demo */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2 mt-1 bg-black/50 border border-white/10 p-3 rounded-xl">
-                    {/* Tono Stepper */}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
-                      <div className="inline-flex items-center bg-black/60 border border-white/20 rounded-lg p-0.5">
-                        <button
-                          onClick={() => handleTranspose(song, -1)}
-                          className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all"
-                          title="Bajar medio tono (-1)"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">remove</span>
-                        </button>
-                        <span className="w-11 text-center text-xs font-bold text-amber-400 font-mono">
-                          {song.currentKey}
-                        </span>
-                        <button
-                          onClick={() => handleTranspose(song, 1)}
-                          className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all"
-                          title="Subir medio tono (+1)"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">add</span>
-                        </button>
+                    {/* Tono Stepper (Solo editable por el Administrador, Solo lectura para visitantes) */}
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
+                        <div className="inline-flex items-center bg-black/60 border border-white/20 rounded-lg p-0.5">
+                          <button
+                            onClick={() => handleTranspose(song, -1)}
+                            className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
+                            title="Bajar medio tono (-1)"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">remove</span>
+                          </button>
+                          <span className="w-11 text-center text-xs font-bold text-amber-400 font-mono">
+                            {song.currentKey}
+                          </span>
+                          <button
+                            onClick={() => handleTranspose(song, 1)}
+                            className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
+                            title="Subir medio tono (+1)"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">add</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
+                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-white/20 text-xs font-bold text-amber-400 font-mono">
+                          {song.currentKey || 'Sol'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-2">
@@ -543,11 +561,25 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
 
                       <button
                         onClick={() => onOpenStageMode(index)}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                         title="Ver en pantalla completa de escenario"
                       >
                         <span className="material-symbols-outlined text-[18px]">open_in_full</span>
                       </button>
+
+                      {isAdmin && onDeleteSong && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Seguro que deseas eliminar "${song.title}" del repertorio?`)) {
+                              onDeleteSong(song.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Eliminar canto del repertorio público (Solo Admin)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -835,15 +867,17 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* User Requested: Prominent PDF / DOC Import Button */}
-                <button
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                  title="Importar archivo PDF o Word para los cantos"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>+ Importar Archivo PDF / DOC</span>
-                </button>
+                {/* Opciones de carga exclusivas para Administradores */}
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    title="Importar archivo PDF o Word para los cantos"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>+ Importar Archivo PDF / DOC</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => alert('Descarga iniciada: Pack_Completo_Concierto_VEC.zip (38 MB)')}
@@ -855,42 +889,44 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
               </div>
             </div>
 
-            {/* Quick Upload Drag & Drop Box */}
-            <div
-              onClick={() => quickFileInputRef.current?.click()}
-              className="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-amber-400/30 hover:border-amber-400/60 bg-amber-500/5 hover:bg-amber-500/10 transition-all flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer group"
-            >
-              <input
-                ref={quickFileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.txt"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleQuickFileUpload(e.target.files[0]);
-                  }
-                }}
-                className="hidden"
-              />
-              <div className="flex items-center gap-3.5 text-left">
-                <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                    ¿Tienes un nuevo archivo PDF, Word (.DOC/.DOCX) o Acordes?
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Haz clic aquí o arrastra tu archivo para importarlo al instante en el cancionero
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 text-xs font-bold shrink-0 transition-all"
+            {/* Quick Upload Drag & Drop Box (Solo Administrador) */}
+            {isAdmin && (
+              <div
+                onClick={() => quickFileInputRef.current?.click()}
+                className="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-amber-400/30 hover:border-amber-400/60 bg-amber-500/5 hover:bg-amber-500/10 transition-all flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer group"
               >
-                Seleccionar Archivo
-              </button>
-            </div>
+                <input
+                  ref={quickFileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleQuickFileUpload(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-3.5 text-left">
+                  <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                      ¿Tienes un nuevo archivo PDF, Word (.DOC/.DOCX) o Acordes?
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Haz clic aquí o arrastra tu archivo para importarlo al instante en el cancionero
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 text-xs font-bold shrink-0 transition-all"
+                >
+                  Seleccionar Archivo
+                </button>
+              </div>
+            )}
 
             {/* Documents List */}
             <div className="flex flex-col gap-3">
@@ -971,11 +1007,11 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
                         <span>Descargar</span>
                       </button>
 
-                      {doc.isUserUploaded && (
+                      {isAdmin && doc.isUserUploaded && (
                         <button
                           onClick={() => handleDeleteDocument(doc.id)}
                           className="p-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 border border-white/10 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
-                          title="Eliminar archivo importado"
+                          title="Eliminar archivo importado (Solo Admin)"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

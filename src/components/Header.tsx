@@ -15,6 +15,10 @@ interface HeaderProps {
   onLogout: () => void;
   onOpenGallery?: () => void;
   photoCount?: number;
+  // Admin-related props
+  isAdmin?: boolean;
+  onAdminLogin?: (user: UserAccount) => void;
+  onAdminLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,6 +33,10 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenGallery,
   photoCount = 15,
+  // Admin props
+  isAdmin,
+  onAdminLogin,
+  onAdminLogout,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
@@ -153,18 +161,20 @@ export const Header: React.FC<HeaderProps> = ({
             Inicio & Evangelio
           </button>
 
-          {/* Cuentas Tab */}
-          <button
-            onClick={() => onNavChange('usuarios')}
-            className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-              currentNav === 'usuarios'
-                ? `${theme.tabActiveBg} ${theme.tabActiveText} font-bold shadow-md`
-                : `${theme.textMuted} hover:bg-white/10 hover:${theme.textMain}`
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-amber-400" />
-            <span>Cuentas</span>
-          </button>
+          {/* Administración Tab (Solo visible para administradores autenticados) */}
+          {isAdmin && (
+            <button
+              onClick={() => onNavChange('usuarios')}
+              className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                currentNav === 'usuarios'
+                  ? `${theme.tabActiveBg} ${theme.tabActiveText} font-bold shadow-md`
+                  : `${theme.textMuted} hover:bg-white/10 hover:${theme.textMain}`
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span>Administración</span>
+            </button>
+          )}
         </nav>
 
         {/* Right Tools: Palette Selector, Notifications, User Profile */}
@@ -379,10 +389,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenLoginModal}
-              className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              title="Acceso exclusivo para administradores del ministerio"
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Entrar</span>
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span>Acceso Admin</span>
             </button>
           )}
         </div>
@@ -423,15 +434,17 @@ export const Header: React.FC<HeaderProps> = ({
         >
           Evangelio
         </button>
-        <button
-          onClick={() => onNavChange('usuarios')}
-          className={`px-2 py-1 text-xs rounded font-medium flex items-center gap-1 ${
-            currentNav === 'usuarios' ? 'text-amber-300 font-bold' : 'text-slate-400'
-          }`}
-        >
-          <Users className="w-3 h-3 text-amber-400" />
-          <span>Cuentas</span>
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => onNavChange('usuarios')}
+            className={`px-2 py-1 text-xs rounded font-medium flex items-center gap-1 ${
+              currentNav === 'usuarios' ? 'text-amber-300 font-bold' : 'text-slate-400'
+            }`}
+          >
+            <Shield className="w-3 h-3 text-amber-400" />
+            <span>Admin</span>
+          </button>
+        )}
       </div>
     </header>
   );

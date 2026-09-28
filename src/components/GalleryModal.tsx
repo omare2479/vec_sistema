@@ -29,6 +29,7 @@ interface GalleryModalProps {
   onResetToDefault: () => void;
   onSetAsWallpaper?: (imageUrl: string) => void;
   onRefreshPhotos?: () => Promise<void>;
+  isAdmin?: boolean;
 }
 
 export const GalleryModal: React.FC<GalleryModalProps> = ({
@@ -40,6 +41,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
   onResetToDefault,
   onSetAsWallpaper,
   onRefreshPhotos,
+  isAdmin = false,
 }) => {
   const theme = THEMES[currentTheme];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,13 +155,17 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-xl animate-fadeIn overflow-y-auto"
       onDragOver={(e) => {
+        if (!isAdmin) return;
         e.preventDefault();
         setIsDragging(true);
       }}
       onDragLeave={(e) => {
         if (e.currentTarget === e.target) setIsDragging(false);
       }}
-      onDrop={handleDrop}
+      onDrop={(e) => {
+        if (!isAdmin) return;
+        handleDrop(e);
+      }}
     >
       <div
         className={`relative w-full max-w-5xl rounded-2xl ${theme.cardBg} border ${theme.cardBorder} shadow-[0_25px_70px_rgba(0,0,0,0.9)] flex flex-col max-h-[92vh] overflow-hidden my-auto`}
@@ -256,23 +262,27 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
               />
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleProcessFiles(e.target.files)}
-            />
+            {isAdmin && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleProcessFiles(e.target.files)}
+                />
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shrink-0 cursor-pointer"
-              title="Subir fotos desde tu dispositivo"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Subir Fotos</span>
-            </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shrink-0 cursor-pointer"
+                  title="Subir fotos desde tu dispositivo (Solo Admin)"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Subir Fotos</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -344,7 +354,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
                           <Maximize2 className="w-3.5 h-3.5" />
                         </button>
 
-                        {photo.isUserUploaded && (
+                        {isAdmin && photo.isUserUploaded && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -353,7 +363,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
                               }
                             }}
                             className="p-1.5 rounded-lg bg-black/60 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow"
-                            title="Eliminar foto"
+                            title="Eliminar foto (Solo Admin)"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -386,22 +396,24 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
         <div className="px-5 py-3 border-t border-white/10 bg-black/40 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]"></span>
-            <span>Las fotos se guardan automáticamente en tu navegador.</span>
+            <span>Las fotos se sincronizan automáticamente con la nube y el navegador.</span>
           </div>
 
-          <button
-            onClick={() => {
-              if (confirm('¿Restablecer la galería a las fotos predeterminadas del ministerio?')) {
-                onResetToDefault();
-                setStatusMessage('Galería restaurada a los valores de fábrica.');
-                setTimeout(() => setStatusMessage(null), 3000);
-              }
-            }}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Restablecer fotos iniciales</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                if (confirm('¿Restablecer la galería a las fotos predeterminadas del ministerio?')) {
+                  onResetToDefault();
+                  setStatusMessage('Galería restaurada a los valores de fábrica.');
+                  setTimeout(() => setStatusMessage(null), 3000);
+                }
+              }}
+              className="flex items-center gap-1.5 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Restablecer fotos iniciales</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -426,7 +438,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {onSetAsWallpaper && (
+              {isAdmin && onSetAsWallpaper && (
                 <button
                   onClick={() => {
                     onSetAsWallpaper(selectedPhoto.imageUrl);
@@ -434,7 +446,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
                     setTimeout(() => setStatusMessage(null), 3000);
                   }}
                   className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/50 text-amber-300 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-                  title="Establecer esta foto como fondo central del sistema"
+                  title="Establecer esta foto como fondo central del sistema (Solo Admin)"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>Poner como fondo</span>
