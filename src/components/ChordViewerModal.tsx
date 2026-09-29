@@ -7,11 +7,13 @@ interface ChordViewerModalProps {
   song: Song;
   onClose: () => void;
   currentTheme: ThemeMode;
+  isAdmin?: boolean;
+  onEditSong?: (song: Song) => void;
 }
 
 const MUSICAL_KEYS = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
 
-export const ChordViewerModal: React.FC<ChordViewerModalProps> = ({ song, onClose, currentTheme }) => {
+export const ChordViewerModal: React.FC<ChordViewerModalProps> = ({ song, onClose, currentTheme, isAdmin = false, onEditSong }) => {
   const theme = THEMES[currentTheme];
   const [currentKey, setCurrentKey] = useState(song.currentKey || 'Sol');
   const [instrument, setInstrument] = useState<'guitar' | 'piano'>('guitar');
@@ -79,13 +81,29 @@ Cristo Jesús, nuestro Salvador.`;
             <h2 className="text-lg sm:text-xl font-bold text-white mt-1">{song.title}</h2>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            aria-label="Cerrar"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdmin && onEditSong && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEditSong(song);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow cursor-pointer"
+                title="Editar letra y acordes de este canto"
+              >
+                <span className="material-symbols-outlined text-[15px]">edit</span>
+                <span>Editar Acordes</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Cerrar"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
         </div>
 
         {/* Toolbar: Transposition, Instrument, Auto-Scroll */}

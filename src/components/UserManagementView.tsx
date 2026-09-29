@@ -461,6 +461,17 @@ export const UserManagementView: React.FC<UserManagementViewProps> = ({
             <Shield className="w-3.5 h-3.5 text-sky-400" />
             <span>Admin ({adminsCount})</span>
           </button>
+
+          {isAdminOrHigher && (
+            <button
+              onClick={handleOpenCreateModal}
+              className="ml-auto px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer whitespace-nowrap"
+              title="Crear nueva cuenta administrativa"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Agregar Administrador</span>
+            </button>
+          )}
         </div>
       </div>
 

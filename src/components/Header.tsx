@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MainNavTab, ThemeMode, UserAccount } from '../types';
 import { THEMES } from '../utils/theme';
-import { Crown, Shield, User, LogOut, Users, Sparkles, LogIn, Image as ImageIcon } from 'lucide-react';
+import { Crown, Shield, User, LogOut, Users, Sparkles, LogIn, Image as ImageIcon, Camera } from 'lucide-react';
 
 interface HeaderProps {
   currentNav: MainNavTab;
@@ -98,23 +98,43 @@ export const Header: React.FC<HeaderProps> = ({
     <header className={`fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b transition-colors duration-300 ${theme.headerBg} shadow-[0_4px_24px_rgba(0,0,0,0.45)]`}>
       <div className="h-16 max-w-5xl mx-auto px-4 flex items-center justify-between gap-3">
         {/* Logo & Brand */}
-        <button
-          onClick={() => onNavChange('repertorio')}
-          className="flex items-center gap-2.5 shrink-0 text-left cursor-pointer group"
-          title="VEC - Voces en Cristo"
-        >
-          <div className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-lg border ${theme.logoBorder} flex items-center justify-center bg-black/40 transition-transform group-hover:scale-105 p-0.5`}>
-            <img
-              alt="Logo VEC - Voces en Cristo"
-              className="w-full h-full object-contain"
-              src={ministryImage || "/vec.jpg"}
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/vec.jpg';
-              }}
-            />
+        <div className="flex items-center gap-2.5 shrink-0 text-left">
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={() => onNavChange('repertorio')}
+              className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-lg border ${theme.logoBorder} flex items-center justify-center bg-black/40 transition-transform group-hover:scale-105 p-0.5 cursor-pointer`}
+              title="VEC - Voces en Cristo"
+            >
+              <img
+                alt="Logo VEC - Voces en Cristo"
+                className="w-full h-full object-contain"
+                src={ministryImage || "/vec.jpg"}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/vec.jpg';
+                }}
+              />
+            </button>
+            {isAdmin && onOpenChangeImageModal && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChangeImageModal();
+                }}
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center justify-center shadow-lg border border-slate-950 transition-transform hover:scale-125 cursor-pointer z-10"
+                title="Cambiar imagen o logo principal del ministerio"
+              >
+                <Camera className="w-2.5 h-2.5" />
+              </button>
+            )}
           </div>
-          <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => onNavChange('repertorio')}
+            className="flex flex-col text-left cursor-pointer"
+          >
             <span className={`text-[19px] font-extrabold tracking-tight leading-tight flex items-center gap-1.5 ${theme.textMain}`}>
               VEC
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
@@ -122,8 +142,8 @@ export const Header: React.FC<HeaderProps> = ({
             <span className={`text-[10px] tracking-widest uppercase font-bold ${theme.primaryText}`}>
               Voces en Cristo
             </span>
-          </div>
-        </button>
+          </button>
+        </div>
 
         {/* Navigation Tabs strictly ordered: 1. Comunidad VEC, 2. Repertorios & Concierto (activo), 3. Inicio & Evangelio, 4. Cuentas */}
         <nav className="hidden sm:flex items-center gap-1.5">

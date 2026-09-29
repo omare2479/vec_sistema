@@ -7,7 +7,8 @@ import { loadAllDocuments, saveDocument, deleteDocument, downloadDocument, forma
 import { RandomMemoryWidget } from './RandomMemoryWidget';
 import { ImportSongDocumentModal } from './ImportSongDocumentModal';
 import { DocumentViewerModal } from './DocumentViewerModal';
-import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar, Sparkles, Check, ExternalLink, Headphones, Music } from 'lucide-react';
+import { SongEditorModal } from './SongEditorModal';
+import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar, Sparkles, Check, ExternalLink, Headphones, Music, Edit3 } from 'lucide-react';
 import { getLiturgicalInfo } from '../utils/evangelioService';
 import { getSpotifyTrackUrl, getAmazonTrackUrl } from '../data/socialMediaData';
 
@@ -19,6 +20,7 @@ interface RepertorioConciertoViewProps {
   songs: Song[];
   onUpdateSongKey: (songId: string, newKey: string) => void;
   onAddSong?: (newSong: Song) => void;
+  onUpdateSong?: (updatedSong: Song) => void;
   onDeleteSong?: (songId: string) => void;
   photos?: GalleryPhoto[];
   onOpenGallery?: () => void;
@@ -35,6 +37,7 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   songs,
   onUpdateSongKey,
   onAddSong,
+  onUpdateSong,
   onDeleteSong,
   photos = [],
   onOpenGallery,
@@ -44,6 +47,10 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   const [activeSubTab, setActiveSubTab] = useState<RepertorioSubTab>('concierto');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('todos');
+
+  // Song Editor State
+  const [isSongEditorOpen, setIsSongEditorOpen] = useState(false);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
 
   // Liturgical Calendar status for the Church today
   const liturgicalInfo = getLiturgicalInfo(new Date());
@@ -366,13 +373,28 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
               </button>
 
               {isAdmin && (
-                <button
-                  onClick={onOpenAddModal}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-md transition-all hover:brightness-110 active:scale-95 cursor-pointer ${theme.tabActiveBg} ${theme.tabActiveText}`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                  <span>Agendar Cantos</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingSong(null);
+                      setIsSongEditorOpen(true);
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold shadow-md transition-all hover:brightness-110 active:scale-95 cursor-pointer ${theme.tabActiveBg} ${theme.tabActiveText}`}
+                    title="Crear y subir una nueva canción con letra y acordes"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>Subir Canción con Acordes</span>
+                  </button>
+
+                  <button
+                    onClick={onOpenAddModal}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold transition-all border border-white/15 cursor-pointer"
+                    title="Agendar canto rápido al setlist"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Agendar al Setlist</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -651,6 +673,19 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
                       >
                         <span className="material-symbols-outlined text-[18px]">open_in_full</span>
                       </button>
+
+                      {isAdmin && onUpdateSong && (
+                        <button
+                          onClick={() => {
+                            setEditingSong(song);
+                            setIsSongEditorOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-amber-400/15 transition-colors cursor-pointer"
+                          title="Editar letra, acordes y datos del canto (Solo Admin)"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      )}
 
                       {isAdmin && onDeleteSong && (
                         <button
@@ -1246,6 +1281,27 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
         document={viewingDoc}
         currentTheme={currentTheme}
       />
+
+      {/* Song Editor Modal with Title, Lyrics & Chords */}
+      {isSongEditorOpen && (
+        <SongEditorModal
+          currentTheme={currentTheme}
+          song={editingSong}
+          onSave={(savedSong) => {
+            if (editingSong && onUpdateSong) {
+              onUpdateSong(savedSong);
+            } else if (onAddSong) {
+              onAddSong(savedSong);
+            }
+            setIsSongEditorOpen(false);
+            setEditingSong(null);
+          }}
+          onClose={() => {
+            setIsSongEditorOpen(false);
+            setEditingSong(null);
+          }}
+        />
+      )}
     </div>
   );
 };

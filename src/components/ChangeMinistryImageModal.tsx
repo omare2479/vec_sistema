@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ThemeMode } from '../types';
 import { THEMES } from '../utils/theme';
+import { compressImage } from '../utils/imageCompressor';
 
 interface ChangeMinistryImageModalProps {
   currentTheme: ThemeMode;
@@ -54,18 +55,25 @@ export const ChangeMinistryImageModal: React.FC<ChangeMinistryImageModalProps> =
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setPreviewUrl(result);
-        setSuccess('¡Imagen cargada exitosamente! Haz clic en "Guardar Imagen".');
-      }
-    };
-    reader.onerror = () => {
-      setError('Ocurrió un error al leer el archivo. Intenta con otra imagen.');
-    };
-    reader.readAsDataURL(file);
+    compressImage(file, 800, 0.75)
+      .then((compressed) => {
+        setPreviewUrl(compressed);
+        setSuccess('¡Imagen cargada y optimizada con éxito! Haz clic en "Guardar Imagen".');
+      })
+      .catch(() => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          if (result) {
+            setPreviewUrl(result);
+            setSuccess('¡Imagen cargada! Haz clic en "Guardar Imagen".');
+          }
+        };
+        reader.onerror = () => {
+          setError('Ocurrió un error al leer el archivo. Intenta con otra imagen.');
+        };
+        reader.readAsDataURL(file);
+      });
   };
 
   const handleApplyUrl = (e: React.FormEvent) => {
@@ -90,11 +98,15 @@ export const ChangeMinistryImageModal: React.FC<ChangeMinistryImageModalProps> =
       setError('No hay imagen seleccionada para guardar.');
       return;
     }
-    onSaveImage(previewUrl);
-    setSuccess('¡Imagen del Ministerio actualizada con éxito!');
-    setTimeout(() => {
-      onClose();
-    }, 600);
+    try {
+      onSaveImage(previewUrl);
+      setSuccess('¡Imagen del Ministerio actualizada con éxito!');
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    } catch (err: any) {
+      setError('Error al guardar: ' + (err?.message || 'Espacio insuficiente en almacenamiento'));
+    }
   };
 
   const handleReset = () => {

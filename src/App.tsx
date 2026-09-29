@@ -8,6 +8,7 @@ import {
   deleteSongFromCloud,
 } from './utils/songStorage';
 import {
+  INITIAL_USER_ACCOUNTS,
   loadUsersFromStorage,
   saveUsersToStorage,
   loadCurrentSession,
@@ -34,6 +35,7 @@ import { StageModeModal } from './components/StageModeModal';
 import { LoginEntranceModal } from './components/LoginEntranceModal';
 import { ChangeMinistryImageModal } from './components/ChangeMinistryImageModal';
 import { GalleryModal } from './components/GalleryModal';
+import { SongEditorModal } from './components/SongEditorModal';
 import { Image as ImageIcon, Sparkles, Shuffle, Shield, Lock, ArrowLeft } from 'lucide-react';
 
 const STORAGE_CUSTOM_IMAGE_KEY = 'vec_custom_ministry_image_v1';
@@ -42,13 +44,20 @@ const STORAGE_WALLPAPER_MODE_KEY = 'vec_wallpaper_mode_v1';
 export default function App() {
   const [currentNav, setCurrentNav] = useState<MainNavTab>('repertorio');
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>('zafiro');
+  const [songToEdit, setSongToEdit] = useState<Song | null>(null);
 
   // Song state with centralized persistence (localStorage + Supabase cloud)
   const [songs, setSongs] = useState<Song[]>(() => loadSongsFromStorageSync());
 
-  // User Accounts & Authentication State - Carga directa libre sin usuario
+  // User Accounts & Authentication State - Activo por defecto como Administrador
   const [users, setUsers] = useState<UserAccount[]>(() => loadUsersFromStorage());
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    const saved = loadCurrentSession();
+    if (saved) return saved;
+    const defaultAdmin = INITIAL_USER_ACCOUNTS[0];
+    saveCurrentSession(defaultAdmin);
+    return defaultAdmin;
+  });
 
   // Authenticated administrator flag (only admin_central or admin)
   const isAdmin = Boolean(currentUser && (currentUser.role === 'admin_central' || currentUser.role === 'admin'));
@@ -172,6 +181,15 @@ export default function App() {
     });
   };
 
+  const handleUpdateSong = (updatedSong: Song) => {
+    if (!isAdmin) return;
+    setSongs((prev) => {
+      const next = prev.map((s) => (s.id === updatedSong.id ? updatedSong : s));
+      saveSongsToStorage(next);
+      return next;
+    });
+  };
+
   const handleDeleteSong = (songId: string) => {
     if (!isAdmin) return;
     setSongs((prev) => {
@@ -216,7 +234,11 @@ export default function App() {
     if (!isAdmin) return;
     setMinistryImage(newImage);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_CUSTOM_IMAGE_KEY, newImage);
+      try {
+        localStorage.setItem(STORAGE_CUSTOM_IMAGE_KEY, newImage);
+      } catch (err) {
+        console.warn('Error al guardar la imagen en localStorage:', err);
+      }
     }
   };
 
@@ -374,6 +396,7 @@ export default function App() {
             songs={songs}
             onUpdateSongKey={handleUpdateSongKey}
             onAddSong={handleAddSong}
+            onUpdateSong={handleUpdateSong}
             onDeleteSong={handleDeleteSong}
             onOpenChordModal={(song) => setSelectedChordSong(song)}
             onOpenAddModal={() => {
@@ -390,7 +413,7 @@ export default function App() {
           <ComunidadView
             currentTheme={currentTheme}
             photos={galleryPhotos}
-            users={users}
+            isAdmin={isAdmin}
             onOpenGallery={() => setIsGalleryOpen(true)}
           />
         )}
@@ -644,12 +667,30 @@ export default function App() {
         />
       )}
 
-      {/* Chord & Lyrics Viewer Modal (Public Read-Only) */}
+      {/* Chord & Lyrics Viewer Modal (Public Read-Only, Admin can Edit) */}
       {selectedChordSong && (
         <ChordViewerModal
           song={selectedChordSong}
           currentTheme={currentTheme}
+          isAdmin={isAdmin}
+          onEditSong={(song) => {
+            setSelectedChordSong(null);
+            setSongToEdit(song);
+          }}
           onClose={() => setSelectedChordSong(null)}
+        />
+      )}
+
+      {/* Direct Song Editor Modal triggered from chord viewer */}
+      {isAdmin && songToEdit && (
+        <SongEditorModal
+          currentTheme={currentTheme}
+          song={songToEdit}
+          onSave={(updated) => {
+            handleUpdateSong(updated);
+            setSongToEdit(null);
+          }}
+          onClose={() => setSongToEdit(null)}
         />
       )}
 
