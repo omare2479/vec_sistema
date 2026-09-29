@@ -13,6 +13,11 @@ import {
   CommunityMember, CalendarEvent, PrayerIntentionStored, SocialLinkEditable,
   loadMembers, saveMembers, loadCalendarEvents, saveCalendarEvents,
   loadPrayerIntentions, savePrayerIntentions, loadSocialLinks, saveSocialLinks,
+  // Cloud (Supabase)
+  loadMembersFromCloud, saveMembersToCloud, deleteMemberFromCloud,
+  loadCalendarEventsFromCloud, saveCalendarEventsToCloud, deleteCalendarEventFromCloud,
+  loadPrayerIntentionsFromCloud, savePrayerIntentionsToCloud,
+  loadSocialLinksFromCloud, saveSocialLinksToCloud,
 } from '../utils/comunidadStorage';
 
 // ─── Social SVG Icons (Official brand logos) ──────────────────────────────
@@ -112,52 +117,70 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
   const [randomSeed, setRandomSeed] = useState(0);
   const previewPhotos = useMemo(() => photos.slice(0, 4), [photos, randomSeed]);
 
-  // ─── Persist on change ──────────────────────────────────────────────
-  useEffect(() => { saveMembers(members); }, [members]);
-  useEffect(() => { saveCalendarEvents(calEvents); }, [calEvents]);
-  useEffect(() => { savePrayerIntentions(intentions); }, [intentions]);
-  useEffect(() => { saveSocialLinks(socialLinks); }, [socialLinks]);
+  // ─── Load from cloud on mount ───────────────────────────────────────
+  useEffect(() => {
+    loadMembersFromCloud().then(data => { if (data.length > 0) setMembers(data); });
+    loadCalendarEventsFromCloud().then(data => { if (data.length > 0) setCalEvents(data); });
+    loadPrayerIntentionsFromCloud().then(data => { if (data.length > 0) setIntentions(data); });
+    loadSocialLinksFromCloud().then(data => { if (data.length > 0) setSocialLinks(data); });
+  }, []);
 
   // ─── Members Handlers ────────────────────────────────────────────────
   const handleSaveMember = (data: Omit<CommunityMember, 'id' | 'createdAt' | 'order'> & { id?: string }) => {
-    if (data.id) {
-      setMembers(prev => prev.map(m => m.id === data.id ? { ...m, ...data } as CommunityMember : m));
-    } else {
-      const newM: CommunityMember = {
-        id: `member-${Date.now()}`,
-        name: data.name,
-        description: data.description,
-        imageUrl: data.imageUrl,
-        order: members.length,
-        createdAt: new Date().toISOString(),
-      };
-      setMembers(prev => [...prev, newM]);
-    }
+    setMembers(prev => {
+      let next: CommunityMember[];
+      if (data.id) {
+        next = prev.map(m => m.id === data.id ? { ...m, ...data } as CommunityMember : m);
+      } else {
+        const newM: CommunityMember = {
+          id: `member-${Date.now()}`,
+          name: data.name,
+          description: data.description,
+          imageUrl: data.imageUrl,
+          order: prev.length,
+          createdAt: new Date().toISOString(),
+        };
+        next = [...prev, newM];
+      }
+      saveMembersToCloud(next);
+      return next;
+    });
     setShowMemberModal(false);
     setEditingMember(null);
   };
   const handleDeleteMember = (id: string) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
+    setMembers(prev => {
+      const next = prev.filter(m => m.id !== id);
+      saveMembersToCloud(next);
+      deleteMemberFromCloud(id);
+      return next;
+    });
     setConfirmDeleteMember(null);
   };
 
   // ─── Calendar Handlers ────────────────────────────────────────────────
   const handleSaveEvent = (data: Omit<CalendarEvent, 'id' | 'createdAt'> & { id?: string }) => {
-    if (data.id) {
-      setCalEvents(prev => prev.map(e => e.id === data.id ? { ...e, ...data } as CalendarEvent : e));
-    } else {
-      const newE: CalendarEvent = {
-        id: `evt-${Date.now()}`,
-        ...data,
-        createdAt: new Date().toISOString(),
-      };
-      setCalEvents(prev => [...prev, newE].sort((a, b) => a.date.localeCompare(b.date)));
-    }
+    setCalEvents(prev => {
+      let next: CalendarEvent[];
+      if (data.id) {
+        next = prev.map(e => e.id === data.id ? { ...e, ...data } as CalendarEvent : e);
+      } else {
+        const newE: CalendarEvent = { id: `evt-${Date.now()}`, ...data, createdAt: new Date().toISOString() };
+        next = [...prev, newE].sort((a, b) => a.date.localeCompare(b.date));
+      }
+      saveCalendarEventsToCloud(next);
+      return next;
+    });
     setShowCalModal(false);
     setEditingEvent(null);
   };
   const handleDeleteEvent = (id: string) => {
-    setCalEvents(prev => prev.filter(e => e.id !== id));
+    setCalEvents(prev => {
+      const next = prev.filter(e => e.id !== id);
+      saveCalendarEventsToCloud(next);
+      deleteCalendarEventFromCloud(id);
+      return next;
+    });
     setConfirmDeleteEvent(null);
   };
 
@@ -183,14 +206,22 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
       hasPrayed: true,
       createdAt: Date.now(),
     };
-    setIntentions(prev => [ni, ...prev]);
+    setIntentions(prev => {
+      const next = [ni, ...prev];
+      savePrayerIntentionsToCloud(next);
+      return next;
+    });
     setNewAuthor(''); setNewText(''); setNewLocation('');
     setShowAddIntention(false);
   };
 
   // ─── Social Handlers ──────────────────────────────────────────────────
   const handleSaveSocial = (link: SocialLinkEditable) => {
-    setSocialLinks(prev => prev.map(l => l.id === link.id ? link : l));
+    setSocialLinks(prev => {
+      const next = prev.map(l => l.id === link.id ? link : l);
+      saveSocialLinksToCloud(next);
+      return next;
+    });
     setEditingSocial(null);
   };
 
