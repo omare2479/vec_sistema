@@ -346,7 +346,7 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
 
           {/* YouTube */}
           <a
-            href="https://www.youtube.com/channel/UCYy7O_ld1yvbsOiWlzu0zTQ"
+            href="https://www.youtube.com/@vocesenCristo-s4x"
             target="_blank"
             rel="noopener noreferrer"
             className="p-3.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 transition-all flex items-center justify-between group cursor-pointer shadow-md"
@@ -361,7 +361,7 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
                 <span className="text-xs font-black text-white group-hover:text-red-300 transition-colors">
                   YouTube Oficial
                 </span>
-                <span className="text-[11px] text-red-300/80 font-medium">Voces en Cristo</span>
+                <span className="text-[11px] text-red-300/80 font-medium">@vocesenCristo-s4x</span>
                 <span className="text-[10px] text-slate-400">Alabanzas &amp; Transmisiones</span>
               </div>
             </div>

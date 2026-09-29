@@ -77,8 +77,8 @@ export const VEC_SOCIAL_LINKS: SocialLink[] = [
   {
     id: 'youtube',
     name: 'YouTube',
-    url: 'https://www.youtube.com/channel/UCYy7O_ld1yvbsOiWlzu0zTQ',
-    handle: 'Voces en Cristo',
+    url: 'https://www.youtube.com/@vocesenCristo-s4x',
+    handle: '@vocesenCristo-s4x',
     iconName: 'youtube',
     brandColor: '#FF0000',
     badgeBg: 'bg-red-500/15',
