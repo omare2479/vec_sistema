@@ -37,68 +37,98 @@ const DIAS_SEMANA = [
 ];
 
 /**
- * Calcula metadatos litúrgicos aproximados basados en la fecha actual
+ * Calcula metadatos litúrgicos detallados basados en la fecha actual
  */
 export function getLiturgicalInfo(date: Date) {
   const month = date.getMonth(); // 0-11
   const day = date.getDate();
   const year = date.getFullYear();
 
-  // Ciclo litúrgico (A, B, C)
-  const ciclos = ['Ciclo C', 'Ciclo A', 'Ciclo B'];
-  const cicloLiturgico = ciclos[year % 3];
+  // Ciclo litúrgico dominical (A, B, C)
+  // 2025-2026: Ciclo A (San Mateo)
+  // A partir del 1er domingo de Adviento (fines de nov 2026) inicia Ciclo B
+  const isPostAdviento = (month === 10 && day >= 29) || month === 11;
+  const effectiveLiturgicalYear = isPostAdviento ? year + 1 : year;
+  
+  const ciclos = ['Ciclo C (San Lucas)', 'Ciclo A (San Mateo)', 'Ciclo B (San Marcos)'];
+  const cicloDominical = ciclos[effectiveLiturgicalYear % 3];
+  const cicloFerial = effectiveLiturgicalYear % 2 === 0 ? 'Año II (Pares)' : 'Año I (Impares)';
+  const anioLiturgico = `${isPostAdviento ? `${year}-${year + 1}` : `${year - 1}-${year}`} • ${cicloDominical}`;
 
   let tiempoLiturgico = 'Tiempo Ordinario';
-  let colorLiturgico = 'Verde';
+  let semanaLiturgica = 'Semana 26ª del Tiempo Ordinario';
+  let temporadaActiva: 'ordinario' | 'adviento_cuaresma' | 'pascua' | 'pentecostes' = 'ordinario';
+  let colorLiturgico = 'Verde Esperanza';
   let colorLiturgicoBg = 'bg-emerald-950/60';
   let colorLiturgicoBorder = 'border-emerald-500/40';
   let colorLiturgicoText = 'text-emerald-300';
+  let descripcionTiempo = 'Tiempo de peregrinación, escucha de la Palabra de Dios y crecimiento en comunidad cristiana.';
 
-  // Adviento y Navidad (Diciembre - Enero)
-  if (month === 11 && day >= 1) {
-    if (day <= 24) {
-      tiempoLiturgico = 'Tiempo de Adviento';
-      colorLiturgico = 'Morado Penitencial';
-      colorLiturgicoBg = 'bg-purple-950/60';
-      colorLiturgicoBorder = 'border-purple-500/40';
-      colorLiturgicoText = 'text-purple-300';
-    } else {
-      tiempoLiturgico = 'Tiempo de Navidad';
-      colorLiturgico = 'Blanco Litúrgico';
-      colorLiturgicoBg = 'bg-amber-950/60';
-      colorLiturgicoBorder = 'border-amber-400/40';
-      colorLiturgicoText = 'text-amber-200';
-    }
-  } else if (month === 0 && day <= 12) {
-    tiempoLiturgico = 'Tiempo de Navidad / Epifanía';
-    colorLiturgico = 'Blanco Litúrgico';
+  // Determinación estacional litúrgica
+  if (month === 11 && day <= 24) {
+    tiempoLiturgico = 'Tiempo de Adviento';
+    semanaLiturgica = 'Tiempo de Espera y Esperanza';
+    temporadaActiva = 'adviento_cuaresma';
+    colorLiturgico = 'Morado Penitencial y Espera';
+    colorLiturgicoBg = 'bg-purple-950/60';
+    colorLiturgicoBorder = 'border-purple-500/40';
+    colorLiturgicoText = 'text-purple-300';
+    descripcionTiempo = 'Tiempo de preparación gozosa para la venida de Nuestro Señor Jesucristo.';
+  } else if ((month === 11 && day > 24) || (month === 0 && day <= 12)) {
+    tiempoLiturgico = 'Tiempo de Navidad & Epifanía';
+    semanaLiturgica = 'Solemnidad de la Natividad del Señor';
+    temporadaActiva = 'pascua';
+    colorLiturgico = 'Blanco Litúrgico & Oro';
     colorLiturgicoBg = 'bg-amber-950/60';
     colorLiturgicoBorder = 'border-amber-400/40';
     colorLiturgicoText = 'text-amber-200';
-  } else if (month >= 1 && month <= 3) {
-    // Estimación Cuaresma / Pascua
-    if (month === 1 && day > 15 || month === 2) {
-      tiempoLiturgico = 'Tiempo de Cuaresma';
-      colorLiturgico = 'Morado de Conversión';
-      colorLiturgicoBg = 'bg-purple-950/60';
-      colorLiturgicoBorder = 'border-purple-500/40';
-      colorLiturgicoText = 'text-purple-300';
-    } else if (month === 3) {
-      tiempoLiturgico = 'Tiempo de Pascua';
-      colorLiturgico = 'Blanco Resurrección';
-      colorLiturgicoBg = 'bg-amber-950/60';
-      colorLiturgicoBorder = 'border-amber-400/40';
-      colorLiturgicoText = 'text-amber-200';
-    }
+    descripcionTiempo = 'Celebración del Misterio de la Encarnación y manifestación de Jesús al mundo.';
+  } else if (month >= 1 && month <= 3 && (month === 1 && day > 15 || month === 2)) {
+    tiempoLiturgico = 'Tiempo de Cuaresma';
+    semanaLiturgica = 'Camino de Conversión hacia la Pascua';
+    temporadaActiva = 'adviento_cuaresma';
+    colorLiturgico = 'Morado de Penitencia y Oración';
+    colorLiturgicoBg = 'bg-purple-950/60';
+    colorLiturgicoBorder = 'border-purple-500/40';
+    colorLiturgicoText = 'text-purple-300';
+    descripcionTiempo = 'Cuarenta días de ayuno, oración y caridad para renovar la alianza con Dios.';
+  } else if (month === 3 || (month === 4 && day <= 20)) {
+    tiempoLiturgico = 'Tiempo Pascual / Pascua de Resurrección';
+    semanaLiturgica = 'Cincuentena Pascual del Resucitado';
+    temporadaActiva = 'pascua';
+    colorLiturgico = 'Blanco y Oro de Resurrección';
+    colorLiturgicoBg = 'bg-amber-950/60';
+    colorLiturgicoBorder = 'border-amber-400/40';
+    colorLiturgicoText = 'text-amber-200';
+    descripcionTiempo = '¡Cristo ha resucitado! Cincuenta días de júbilo y vida nueva hasta Pentecostés.';
+  } else if (month === 4 && day > 20) {
+    tiempoLiturgico = 'Pentecostés';
+    semanaLiturgica = 'Fiesta de la Efusión del Espíritu Santo';
+    temporadaActiva = 'pentecostes';
+    colorLiturgico = 'Rojo Fuego del Espíritu';
+    colorLiturgicoBg = 'bg-rose-950/60';
+    colorLiturgicoBorder = 'border-rose-500/40';
+    colorLiturgicoText = 'text-rose-200';
+    descripcionTiempo = 'Fuego, carismas y envío misionero de la Iglesia.';
+  } else {
+    // Estimación de semana en Tiempo Ordinario (septiembre suele ser entre la semana 24 y 27)
+    const weekEstimate = Math.min(34, Math.max(1, Math.floor((date.getTime() - new Date(year, 0, 15).getTime()) / (7 * 24 * 3600 * 1000))));
+    semanaLiturgica = `Semana ${weekEstimate}ª del Tiempo Ordinario`;
   }
 
   return {
     tiempoLiturgico,
+    semanaLiturgica,
+    temporadaActiva,
+    anioLiturgico,
+    cicloDominical,
+    cicloFerial,
     colorLiturgico,
     colorLiturgicoBg,
     colorLiturgicoBorder,
     colorLiturgicoText,
-    cicloLiturgico,
+    descripcionTiempo,
+    cicloLiturgico: cicloDominical,
   };
 }
 

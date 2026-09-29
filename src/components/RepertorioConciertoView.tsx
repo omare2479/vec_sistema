@@ -7,7 +7,8 @@ import { loadAllDocuments, saveDocument, deleteDocument, downloadDocument, forma
 import { RandomMemoryWidget } from './RandomMemoryWidget';
 import { ImportSongDocumentModal } from './ImportSongDocumentModal';
 import { DocumentViewerModal } from './DocumentViewerModal';
-import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar, Sparkles, Check } from 'lucide-react';
+import { getLiturgicalInfo } from '../utils/evangelioService';
 
 interface RepertorioConciertoViewProps {
   currentTheme: ThemeMode;
@@ -42,6 +43,9 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   const [activeSubTab, setActiveSubTab] = useState<RepertorioSubTab>('concierto');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('todos');
+
+  // Liturgical Calendar status for the Church today
+  const liturgicalInfo = getLiturgicalInfo(new Date());
 
   // Documents State (PDF / DOC / DOCX for the band)
   const [documents, setDocuments] = useState<BandDocument[]>([]);
@@ -667,6 +671,7 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
       {activeSubTab === 'liturgicos' && (
         <div className="flex flex-col gap-4 animate-fadeIn">
           <div className={`p-4 sm:p-6 rounded-2xl ${theme.cardBg} border ${theme.cardBorder} shadow-xl flex flex-col gap-4`}>
+            {/* Cabecera de la sección */}
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -685,6 +690,50 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
               <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-amber-300 font-bold shrink-0">
                 8 Momentos
               </span>
+            </div>
+
+            {/* BANNER DE ESTADO LITÚRGICO ACTUAL: TIEMPO & AÑO LITÚRGICO */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-[#07132b] to-emerald-950/80 border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden backdrop-blur-xl">
+              <div className="flex items-start sm:items-center gap-3.5 relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg shadow-emerald-500/10">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Tiempo Litúrgico Actual</span>
+                    </span>
+                    <span className="text-xs font-bold text-amber-300">
+                      {liturgicalInfo.semanaLiturgica}
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white mt-1 flex items-center gap-2 flex-wrap">
+                    <span>{liturgicalInfo.tiempoLiturgico}</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-emerald-900/60 border border-emerald-500/40 text-emerald-200">
+                      Vestidura: {liturgicalInfo.colorLiturgico}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                    {liturgicalInfo.descripcionTiempo}
+                  </p>
+                </div>
+              </div>
+
+              {/* Año Litúrgico & Ciclo */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-black/60 border border-white/15 flex flex-col md:items-end justify-center shrink-0 relative z-10 text-left md:text-right">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Año Litúrgico de la Iglesia</span>
+                </div>
+                <span className="text-sm sm:text-base font-black text-amber-300 tracking-tight">
+                  {liturgicalInfo.anioLiturgico}
+                </span>
+                <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-300">
+                  <span className="font-medium">Ciclo Ferial:</span>
+                  <strong className="text-sky-300 font-bold">{liturgicalInfo.cicloFerial}</strong>
+                </div>
+              </div>
             </div>
 
             {/* Moments Grid */}
@@ -715,25 +764,86 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
 
             {/* Liturgical Seasons Guide */}
             <div className="p-4 bg-black/50 border border-white/10 rounded-xl mt-2">
-              <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider mb-2">
-                Recomendaciones por Tiempo Litúrgico
-              </h3>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-2.5">
+                <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                  Recomendaciones por Tiempo Litúrgico
+                </h3>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Guía de cantos según el calendario eclesial
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200">
-                  <span className="font-bold block">Tiempo Ordinario</span>
-                  <span className="text-[10px] text-emerald-300/80">Cantos de camino, reino y comunidad</span>
+                {/* 1. Tiempo Ordinario */}
+                <div
+                  className={`p-3 rounded-xl transition-all relative ${
+                    liturgicalInfo.temporadaActiva === 'ordinario'
+                      ? 'bg-emerald-950/70 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.35)] text-white'
+                      : 'bg-emerald-950/30 border border-emerald-500/20 text-emerald-200/80 opacity-80'
+                  }`}
+                >
+                  {liturgicalInfo.temporadaActiva === 'ordinario' && (
+                    <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Actual</span>
+                    </span>
+                  )}
+                  <span className="font-extrabold block text-xs">Tiempo Ordinario</span>
+                  <span className="text-[10px] text-emerald-300/80 block mt-0.5">Cantos de camino, reino y comunidad</span>
                 </div>
-                <div className="p-2 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200">
-                  <span className="font-bold block">Adviento & Cuaresma</span>
-                  <span className="text-[10px] text-purple-300/80">Sobriedad, penitencia y espera</span>
+
+                {/* 2. Adviento & Cuaresma */}
+                <div
+                  className={`p-3 rounded-xl transition-all relative ${
+                    liturgicalInfo.temporadaActiva === 'adviento_cuaresma'
+                      ? 'bg-purple-950/70 border-2 border-purple-400 shadow-[0_0_18px_rgba(168,85,247,0.35)] text-white'
+                      : 'bg-purple-950/30 border border-purple-500/20 text-purple-200/80 opacity-80'
+                  }`}
+                >
+                  {liturgicalInfo.temporadaActiva === 'adviento_cuaresma' && (
+                    <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-purple-400 text-slate-950 text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Actual</span>
+                    </span>
+                  )}
+                  <span className="font-extrabold block text-xs">Adviento & Cuaresma</span>
+                  <span className="text-[10px] text-purple-300/80 block mt-0.5">Sobriedad, penitencia y espera</span>
                 </div>
-                <div className="p-2 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200">
-                  <span className="font-bold block">Pascua & Resurrección</span>
-                  <span className="text-[10px] text-amber-300/80">¡Aleluya! Júbilo y gloria solemne</span>
+
+                {/* 3. Pascua & Resurrección */}
+                <div
+                  className={`p-3 rounded-xl transition-all relative ${
+                    liturgicalInfo.temporadaActiva === 'pascua'
+                      ? 'bg-amber-950/70 border-2 border-amber-400 shadow-[0_0_18px_rgba(245,158,11,0.35)] text-white'
+                      : 'bg-amber-950/30 border border-amber-500/20 text-amber-200/80 opacity-80'
+                  }`}
+                >
+                  {liturgicalInfo.temporadaActiva === 'pascua' && (
+                    <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Actual</span>
+                    </span>
+                  )}
+                  <span className="font-extrabold block text-xs">Pascua & Resurrección</span>
+                  <span className="text-[10px] text-amber-300/80 block mt-0.5">¡Aleluya! Júbilo y gloria solemne</span>
                 </div>
-                <div className="p-2 rounded-lg bg-red-950/40 border border-red-500/30 text-red-200">
-                  <span className="font-bold block">Pentecostés</span>
-                  <span className="text-[10px] text-red-300/80">Fuego y efusión del Espíritu</span>
+
+                {/* 4. Pentecostés */}
+                <div
+                  className={`p-3 rounded-xl transition-all relative ${
+                    liturgicalInfo.temporadaActiva === 'pentecostes'
+                      ? 'bg-red-950/70 border-2 border-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.35)] text-white'
+                      : 'bg-red-950/30 border border-red-500/20 text-red-200/80 opacity-80'
+                  }`}
+                >
+                  {liturgicalInfo.temporadaActiva === 'pentecostes' && (
+                    <span className="absolute -top-2.5 right-2 px-2 py-0.5 rounded-full bg-rose-400 text-slate-950 text-[9px] font-black tracking-wider uppercase shadow-md flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Actual</span>
+                    </span>
+                  )}
+                  <span className="font-extrabold block text-xs">Pentecostés</span>
+                  <span className="text-[10px] text-red-300/80 block mt-0.5">Fuego y efusión del Espíritu</span>
                 </div>
               </div>
             </div>
