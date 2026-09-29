@@ -43,6 +43,8 @@ export interface Song {
   attachedDocName?: string;
   attachedDocUrl?: string;
   attachedDocType?: 'pdf' | 'doc' | 'docx' | 'txt';
+  spotifyUrl?: string;
+  amazonMusicUrl?: string;
 }
 
 export interface LiturgicalMoment {

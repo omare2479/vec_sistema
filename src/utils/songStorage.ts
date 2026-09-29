@@ -2,7 +2,7 @@ import { Song } from '../types';
 import { INITIAL_CONCERT_SONGS } from '../data/mockData';
 import { supabase } from './supabaseClient';
 
-const LOCAL_STORAGE_SONGS_KEY = 'vec_ministerio_songs_v1';
+const LOCAL_STORAGE_SONGS_KEY = 'vec_ministerio_songs_v2';
 
 // Mapear de fila Supabase a Song
 function mapDbToSong(row: any): Song {
@@ -28,6 +28,8 @@ function mapDbToSong(row: any): Song {
     attachedDocName: row.attached_doc_name || undefined,
     attachedDocUrl: row.attached_doc_url || undefined,
     attachedDocType: row.attached_doc_type || undefined,
+    spotifyUrl: row.spotify_url || (row.title?.toLowerCase().includes('todo mi amor') ? 'https://open.spotify.com/search/Voces%20en%20Cristo%20Todo%20mi%20amor' : undefined),
+    amazonMusicUrl: row.amazon_music_url || (row.title?.toLowerCase().includes('todo mi amor') ? 'https://music.amazon.com/search/Voces+en+Cristo' : undefined),
   };
 }
 
@@ -59,6 +61,20 @@ function mapSongToDb(s: Song) {
 }
 
 /**
+ * Asegura que canciones originales oficiales como Todo mi amor estén presentes
+ */
+function ensureEssentialSongs(songsList: Song[]): Song[] {
+  const hasTodoMiAmor = songsList.some((s) => s.title.toLowerCase().includes('todo mi amor'));
+  if (!hasTodoMiAmor) {
+    const todoMiAmor = INITIAL_CONCERT_SONGS.find((s) => s.id === 'song-todo-mi-amor');
+    if (todoMiAmor) {
+      return [todoMiAmor, ...songsList];
+    }
+  }
+  return songsList;
+}
+
+/**
  * Carga canciones desde localStorage o Supabase si está disponible.
  */
 export async function loadAllSongs(): Promise<Song[]> {
@@ -70,7 +86,7 @@ export async function loadAllSongs(): Promise<Song[]> {
       .order('order_number', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      const cloudSongs = data.map(mapDbToSong);
+      const cloudSongs = ensureEssentialSongs(data.map(mapDbToSong));
       try {
         localStorage.setItem(LOCAL_STORAGE_SONGS_KEY, JSON.stringify(cloudSongs));
       } catch (err) {
@@ -89,11 +105,13 @@ export async function loadAllSongs(): Promise<Song[]> {
 
   // 2. Fallback a localStorage
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_SONGS_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_SONGS_KEY) || localStorage.getItem('vec_ministerio_songs_v1');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const enriched = ensureEssentialSongs(parsed);
+        localStorage.setItem(LOCAL_STORAGE_SONGS_KEY, JSON.stringify(enriched));
+        return enriched;
       }
     }
   } catch (err) {
@@ -111,11 +129,11 @@ export async function loadAllSongs(): Promise<Song[]> {
 
 export function loadSongsFromStorageSync(): Song[] {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_SONGS_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_SONGS_KEY) || localStorage.getItem('vec_ministerio_songs_v1');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return ensureEssentialSongs(parsed);
       }
     }
   } catch {

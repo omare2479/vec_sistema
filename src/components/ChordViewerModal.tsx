@@ -180,12 +180,39 @@ Cristo Jesús, nuestro Salvador.`;
           {defaultLyrics}
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-3 bg-[#060b1b] border-t border-white/10 flex items-center justify-between text-xs">
-          <span className="text-slate-400">Arreglo oficial del Ministerio Voces en Cristo</span>
+        {/* Modal Footer with Streaming Links */}
+        <div className="p-3 bg-[#060b1b] border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <a
+              href={song.spotifyUrl || `https://open.spotify.com/search/Voces%20en%20Cristo%20${encodeURIComponent(song.title)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-[#1DB954]/20 hover:bg-[#1DB954]/30 text-[#1ED760] border border-[#1DB954]/40 font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              title="Escuchar en Spotify"
+            >
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              <span>Spotify</span>
+            </a>
+
+            <a
+              href={song.amazonMusicUrl || `https://music.amazon.com/search/Voces+en+Cristo+${encodeURIComponent(song.title)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-[#00A8E1]/20 hover:bg-[#00A8E1]/30 text-[#00A8E1] border border-[#00A8E1]/40 font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              title="Escuchar en Amazon Music"
+            >
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M13.9 11.7c-.1-.7-.6-1.2-1.6-1.2-.9 0-1.5.5-1.7 1.2h3.3zm-3.3 2.1c0 .8.6 1.3 1.6 1.3.8 0 1.3-.3 1.6-.9h1.7c-.4 1.4-1.6 2.2-3.3 2.2-2.1 0-3.5-1.4-3.5-3.6 0-2.2 1.4-3.6 3.4-3.6 2.2 0 3.5 1.5 3.5 3.6v.9h-5zm-5.4-3.8h1.9v7.1H5.2v-7.1zm.9-1.5c-.7 0-1.2-.5-1.2-1.2 0-.7.5-1.2 1.2-1.2.7 0 1.2.5 1.2 1.2 0 .7-.5 1.2-1.2 1.2zm13.1 5.3c0-1.4-.9-2.3-2.3-2.3-.9 0-1.6.4-2 1.1v-1h-1.8v7.1h1.9v-3.7c0-.8.5-1.4 1.3-1.4.7 0 1 .4 1 1.2v3.9h1.9v-4.9z"/>
+              </svg>
+              <span>Amazon Music</span>
+            </a>
+          </div>
+
           <button
             onClick={() => window.print()}
-            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-[15px]">print</span>
             <span>Imprimir Cifrado</span>

@@ -2,6 +2,65 @@ import { Song, LiturgicalMoment, BandMember, PrayerIntention, RehearsalEvent } f
 
 export const INITIAL_CONCERT_SONGS: Song[] = [
   {
+    id: 'song-todo-mi-amor',
+    orderNumber: '01',
+    title: 'Todo mi amor',
+    subtitle: 'Canción oficial de Voces en Cristo. Disponible en Spotify y Amazon Music. Canto de entrega y adoración eucarística.',
+    category: 'adoracion',
+    categoryLabel: 'Original VEC • Adoración',
+    duration: '4:45 min',
+    originalKey: 'Re',
+    currentKey: 'Re',
+    rhythmNote: 'Balada Pop Eucarística • 68 BPM',
+    arrangementNote: 'Arreglo acústico con piano, guitarras, bajo y armonías vocales a 3 voces',
+    introTags: ['Original VEC', 'Spotify', 'Amazon Music', 'Adoración'],
+    audioDurationSeconds: 285,
+    isOriginalVEC: true,
+    spotifyUrl: 'https://open.spotify.com/search/Voces%20en%20Cristo%20Todo%20mi%20amor',
+    amazonMusicUrl: 'https://music.amazon.com/search/Voces+en+Cristo',
+    lyricsAndChords: `[Intro] D - A - Bm - G (x2)
+
+[Verso 1]
+D              A
+Aquí estoy mi Señor,
+Bm             G
+postrado a tus pies Jesús.
+D              A
+No tengo nada más
+Bm             G
+que darte en adoración.
+
+[Coro]
+D               A
+Todo mi amor es para Ti,
+Bm              G
+toda mi vida te la doy.
+D               A
+Jesús, mi Rey y Salvador,
+G          A        D
+Tuyo es mi corazón Señor.
+
+[Verso 2]
+D              A
+Toma mis manos, toma mi voz,
+Bm             G
+hazme instrumento de tu amor.
+D              A
+Que donde haya oscuridad,
+Bm             G
+brille tu luz y tu verdad.
+
+[Puente]
+G              A
+Santo, Santo, Santo eres Señor,
+Bm             F#m
+digno de alabanza y de gloria.
+G              A
+Que todo lo que soy te adore hoy,
+Em             A
+Señor de la Eucaristía.`
+  },
+  {
     id: 'song-1',
     orderNumber: '01',
     title: 'Ven Espíritu de Dios',
