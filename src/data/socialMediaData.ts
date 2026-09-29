@@ -74,6 +74,18 @@ export const VEC_SOCIAL_LINKS: SocialLink[] = [
     textColor: 'text-sky-400',
     description: 'Reproducción y streaming oficial en Amazon Music',
   },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    url: 'https://www.youtube.com/@vocesencristo',
+    handle: '@vocesencristo',
+    iconName: 'youtube',
+    brandColor: '#FF0000',
+    badgeBg: 'bg-red-500/15',
+    badgeBorder: 'border-red-500/30',
+    textColor: 'text-red-400',
+    description: 'Videos de alabanza, conciertos y transmisiones en vivo',
+  },
 ];
 
 /**
