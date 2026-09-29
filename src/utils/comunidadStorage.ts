@@ -1,7 +1,7 @@
 /**
  * comunidadStorage.ts
  * Persistencia en Supabase (nube) + localStorage (fallback) para:
- * Miembros, Eventos de Calendario, Intenciones de Oraci�n y Redes Sociales
+ * Miembros, Eventos de Calendario, Intenciones de Oraci�n y Redes Sociales
  */
 
 import { supabase } from './supabaseClient';
@@ -20,12 +20,13 @@ export interface CommunityMember {
 export interface CalendarEvent {
   id: string;
   title: string;
-  type: 'ensayo' | 'presentacion' | 'misa' | 'concierto' | 'vigilia';
+  type: 'ensayo' | 'presentacion' | 'misa' | 'concierto' | 'vigilia' | 'adoracion';
   date: string;
   time: string;
   endTime?: string;
   location: string;
   description: string;
+  imageUrl?: string;
   status: 'confirmado' | 'proximo' | 'cancelado';
   createdAt: string;
 }
@@ -69,10 +70,58 @@ export const DEFAULT_MEMBERS: CommunityMember[] = [
 ];
 
 export const DEFAULT_CALENDAR_EVENTS: CalendarEvent[] = [
-  { id: 'evt-1', title: 'Ensayo General - Concierto VEC',          type: 'ensayo',       date: '2026-10-23', time: '19:00', endTime: '21:30', location: 'Salon Parroquial San Juan Bosco', description: 'Ajuste de dinamicas, soundcheck y oracion previa.', status: 'confirmado', createdAt: '2026-01-10' },
-  { id: 'evt-2', title: 'Prueba de Sonido (Soundcheck)',            type: 'presentacion', date: '2026-10-25', time: '16:00', endTime: '18:00', location: 'Auditorio Principal',              description: 'Revision de microfonia de coros, guitarra y bajo.',  status: 'confirmado', createdAt: '2026-01-10' },
-  { id: 'evt-3', title: 'Concierto de Alabanza & Adoracion VEC',   type: 'concierto',    date: '2026-10-25', time: '19:30', endTime: '22:00', location: 'Auditorio San Juan Bosco',        description: 'Setlist de 10 cantos, momento con el Santisimo.',   status: 'confirmado', createdAt: '2026-01-10' },
-  { id: 'evt-4', title: 'Misa Dominical de Accion de Gracias',     type: 'misa',         date: '2026-10-26', time: '11:30', endTime: '13:00', location: 'Templo Parroquial',               description: 'Repertorio liturgico del domingo.',                  status: 'proximo',    createdAt: '2026-01-10' },
+  {
+    id: 'evt-1',
+    title: 'Ensayo General - Banda & Coros',
+    type: 'ensayo',
+    date: '2026-10-23',
+    time: '19:00',
+    endTime: '21:30',
+    location: 'Salón Parroquial San Juan Bosco',
+    description: 'Ajuste de dinámicas, afinación, soundcheck y oración comunitaria.',
+    imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80',
+    status: 'confirmado',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'evt-2',
+    title: 'Noche de Adoración Eucarística & Alabanza',
+    type: 'adoracion',
+    date: '2026-10-24',
+    time: '20:00',
+    endTime: '22:30',
+    location: 'Templo Parroquial',
+    description: 'Exposición del Santísimo Sacramento, cantos de intimidad y oración contemplativa.',
+    imageUrl: 'https://images.unsplash.com/photo-1519817650390-64a93db51149?w=600&auto=format&fit=crop&q=80',
+    status: 'confirmado',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'evt-3',
+    title: 'Gran Concierto VEC: Voces en Cristo',
+    type: 'concierto',
+    date: '2026-10-25',
+    time: '19:30',
+    endTime: '22:00',
+    location: 'Auditorio San Juan Bosco',
+    description: 'Setlist de 10 cantos enérgicos, luces, coro completo y testimonio musical.',
+    imageUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&auto=format&fit=crop&q=80',
+    status: 'confirmado',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'evt-4',
+    title: 'Santa Misa Dominical de Acción de Gracias',
+    type: 'misa',
+    date: '2026-10-26',
+    time: '11:30',
+    endTime: '13:00',
+    location: 'Templo Parroquial',
+    description: 'Repertorio litúrgico del domingo: Entrada, Salmo, Ofertorio y Comunión.',
+    imageUrl: 'https://images.unsplash.com/photo-1548625361-12590f0580ea?w=600&auto=format&fit=crop&q=80',
+    status: 'proximo',
+    createdAt: '2026-01-10'
+  },
 ];
 
 export const DEFAULT_PRAYERS: PrayerIntentionStored[] = [
@@ -123,7 +172,7 @@ export function loadMembers(): CommunityMember[] {
   return lsGet<CommunityMember[]>(MEMBERS_KEY) ?? DEFAULT_MEMBERS;
 }
 
-/** Async cloud load � call this on mount */
+/** Async cloud load � call this on mount */
 export async function loadMembersFromCloud(): Promise<CommunityMember[]> {
   try {
     const { data, error } = await supabase.from('community_members').select('*').order('sort_order', { ascending: true });
@@ -171,12 +220,29 @@ function mapDbToEvent(row: Record<string,unknown>): CalendarEvent {
     endTime:     (row.end_time as string) || undefined,
     location:    (row.location as string) || '',
     description: (row.description as string) || '',
+    imageUrl:    (row.image_url as string) || (row.imageUrl as string) || undefined,
     status:      (row.status as CalendarEvent['status']) || 'proximo',
     createdAt:   (row.created_at as string) || new Date().toISOString(),
   };
 }
-function mapEventToDb(e: CalendarEvent) {
-  return { id: e.id, title: e.title, type: e.type, event_date: e.date, event_time: e.time, end_time: e.endTime || null, location: e.location, description: e.description, status: e.status, created_at: e.createdAt };
+
+function mapEventToDb(e: CalendarEvent, includeImage = true) {
+  const row: Record<string, unknown> = {
+    id: e.id,
+    title: e.title,
+    type: e.type,
+    event_date: e.date,
+    event_time: e.time,
+    end_time: e.endTime || null,
+    location: e.location,
+    description: e.description,
+    status: e.status,
+    created_at: e.createdAt,
+  };
+  if (includeImage && e.imageUrl !== undefined) {
+    row.image_url = e.imageUrl;
+  }
+  return row;
 }
 
 export function loadCalendarEvents(): CalendarEvent[] {
@@ -207,17 +273,47 @@ export function saveCalendarEvents(events: CalendarEvent[]): void {
 export async function saveCalendarEventsToCloud(events: CalendarEvent[]): Promise<void> {
   lsSet(EVENTS_KEY, events);
   try {
-    const rows = events.map(mapEventToDb);
-    await supabase.from('calendar_events').upsert(rows, { onConflict: 'id' });
-  } catch (e) { console.warn('saveCalendarEventsToCloud error:', e); }
+    const rows = events.map(e => mapEventToDb(e, true));
+    const { error } = await supabase.from('calendar_events').upsert(rows, { onConflict: 'id' });
+    if (error) {
+      console.warn('saveCalendarEventsToCloud error, attempting fallback without image_url:', error.message);
+      const fallbackRows = events.map(e => mapEventToDb(e, false));
+      await supabase.from('calendar_events').upsert(fallbackRows, { onConflict: 'id' });
+    }
+  } catch (e) {
+    console.warn('saveCalendarEventsToCloud error:', e);
+  }
 }
 
 export async function deleteCalendarEventFromCloud(id: string): Promise<void> {
   try { await supabase.from('calendar_events').delete().eq('id', id); } catch (e) { console.warn('deleteEvent error:', e); }
 }
 
+/**
+ * Devuelve el próximo evento de calendario más cercano a la fecha y hora actual.
+ */
+export function getNearestUpcomingEvent(events: CalendarEvent[]): CalendarEvent | null {
+  if (!events || events.length === 0) return null;
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+
+  // Eventos activos (no cancelados) de hoy o posteriores
+  const activeEvents = events.filter(e => e.status !== 'cancelado');
+  const futureEvents = activeEvents.filter(e => e.date >= todayStr);
+
+  if (futureEvents.length > 0) {
+    return [...futureEvents].sort((a, b) => {
+      const cmp = a.date.localeCompare(b.date);
+      return cmp !== 0 ? cmp : a.time.localeCompare(b.time);
+    })[0];
+  }
+
+  // Si no hay futuros, retornar el más reciente
+  return [...activeEvents].sort((a, b) => b.date.localeCompare(a.date))[0] || events[0] || null;
+}
+
 // ---------------------------------------------------------------------------
-//  INTENCIONES DE ORACI�N
+//  INTENCIONES DE ORACI�N
 // ---------------------------------------------------------------------------
 
 function mapDbToPrayer(row: Record<string,unknown>): PrayerIntentionStored {

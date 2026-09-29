@@ -11,6 +11,16 @@ import { SongEditorModal } from './SongEditorModal';
 import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar, Sparkles, Check, ExternalLink, Headphones, Music, Edit3 } from 'lucide-react';
 import { getLiturgicalInfo } from '../utils/evangelioService';
 import { getSpotifyTrackUrl, getAmazonTrackUrl } from '../data/socialMediaData';
+import {
+  CalendarEvent,
+  loadCalendarEvents,
+  loadCalendarEventsFromCloud,
+  saveCalendarEventsToCloud,
+  deleteCalendarEventFromCloud,
+  getNearestUpcomingEvent,
+} from '../utils/comunidadStorage';
+import { EventsSliderModal } from './EventsSliderModal';
+import { CalendarEventModal } from './CalendarEventModal';
 
 interface RepertorioConciertoViewProps {
   currentTheme: ThemeMode;
@@ -135,6 +145,58 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   // Selected liturgical moment modal state
   const [selectedMoment, setSelectedMoment] = useState<LiturgicalMoment | null>(null);
 
+  // Calendar events state & modals
+  const [events, setEvents] = useState<CalendarEvent[]>(() => loadCalendarEvents());
+  const [showEventsSlider, setShowEventsSlider] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  useEffect(() => {
+    loadCalendarEventsFromCloud().then((evs) => {
+      if (evs && evs.length > 0) setEvents(evs);
+    });
+  }, []);
+
+  const nearestEvent = getNearestUpcomingEvent(events);
+
+  const formatNearestDateTime = (ev: CalendarEvent | null) => {
+    if (!ev) return 'Sáb 25 • 19:30';
+    try {
+      const parts = ev.date.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dayStr = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+        const capDay = dayStr.charAt(0).toUpperCase() + dayStr.slice(1);
+        return `${capDay} ${parts[2]} • ${ev.time}`;
+      }
+    } catch {}
+    return `${ev.date} • ${ev.time}`;
+  };
+
+  const handleSaveEvent = async (eventData: Omit<CalendarEvent, 'id' | 'createdAt'> & { id?: string }) => {
+    let updated: CalendarEvent[];
+    if (eventData.id) {
+      updated = events.map(e => e.id === eventData.id ? { ...e, ...eventData, id: e.id, createdAt: e.createdAt } : e);
+    } else {
+      const newEv: CalendarEvent = {
+        ...eventData,
+        id: `evt-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+      };
+      updated = [newEv, ...events];
+    }
+    setEvents(updated);
+    setShowEventModal(false);
+    setEditingEvent(null);
+    await saveCalendarEventsToCloud(updated);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const updated = events.filter(e => e.id !== eventId);
+    setEvents(updated);
+    await deleteCalendarEventFromCloud(eventId);
+  };
+
   useEffect(() => {
     globalAudioPlayer.setCallbacks(
       (curr, tot) => {
@@ -224,26 +286,80 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
             </p>
           </div>
 
-          {/* Event Stats Bento Box */}
+          {/* Event Stats Bento Box - Dynamic & Interactive */}
           <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="bg-black/50 border border-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col gap-1 shadow-inner">
-              <span className={`text-[11px] font-medium ${theme.textMuted}`}>Próximo Evento</span>
-              <span className={`text-base sm:text-lg font-bold truncate ${theme.primaryText}`}>
-                Concierto VEC
+            <button
+              type="button"
+              onClick={() => setShowEventsSlider(true)}
+              className="bg-black/50 hover:bg-white/10 transition-all border border-white/10 hover:border-amber-400/40 backdrop-blur-md rounded-xl p-2.5 sm:p-3 flex flex-col gap-1 shadow-inner text-left cursor-pointer group"
+              title="Click para ver agenda deslizable"
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] sm:text-[11px] font-medium ${theme.textMuted}`}>Próximo Evento</span>
+                <span className="text-[10px] text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">Ver ↗</span>
+              </div>
+              <span className={`text-xs sm:text-base font-bold truncate ${theme.primaryText}`}>
+                {nearestEvent ? nearestEvent.title : 'Concierto VEC'}
               </span>
-            </div>
-            <div className="bg-black/50 border border-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col gap-1 shadow-inner">
-              <span className={`text-[11px] font-medium ${theme.textMuted}`}>Fecha & Hora</span>
-              <span className={`text-base sm:text-lg font-bold truncate ${theme.textMain}`}>
-                Sáb 25 • 19:30
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowEventsSlider(true)}
+              className="bg-black/50 hover:bg-white/10 transition-all border border-white/10 hover:border-amber-400/40 backdrop-blur-md rounded-xl p-2.5 sm:p-3 flex flex-col gap-1 shadow-inner text-left cursor-pointer group"
+              title="Click para ver agenda deslizable"
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] sm:text-[11px] font-medium ${theme.textMuted}`}>Fecha & Hora</span>
+                <span className="text-[10px] text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">📅</span>
+              </div>
+              <span className={`text-xs sm:text-base font-bold truncate ${theme.textMain}`}>
+                {formatNearestDateTime(nearestEvent)}
               </span>
-            </div>
-            <div className="bg-black/50 border border-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col gap-1 shadow-inner">
-              <span className={`text-[11px] font-medium ${theme.textMuted}`}>Cantos Agendados</span>
-              <span className={`text-base sm:text-lg font-bold text-amber-300`}>
-                {songs.length} cantos
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowEventsSlider(true)}
+              className="bg-black/50 hover:bg-white/10 transition-all border border-white/10 hover:border-amber-400/40 backdrop-blur-md rounded-xl p-2.5 sm:p-3 flex flex-col gap-1 shadow-inner text-left cursor-pointer group"
+              title="Click para ver agenda deslizable"
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] sm:text-[11px] font-medium ${theme.textMuted}`}>
+                  {nearestEvent ? (nearestEvent.type === 'concierto' ? 'Cantos' : 'Lugar') : 'Cantos'}
+                </span>
+                <span className="text-[10px] text-amber-300 font-bold">{events.length} ev.</span>
+              </div>
+              <span className={`text-xs sm:text-base font-bold text-amber-300 truncate`}>
+                {nearestEvent?.type === 'concierto' ? `${songs.length} cantos` : (nearestEvent?.location || `${songs.length} cantos`)}
               </span>
-            </div>
+            </button>
+          </div>
+
+          {/* Quick Schedule & Agenda Action Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => setShowEventsSlider(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>Ver Agenda Deslizable ({events.length} eventos)</span>
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingEvent(null);
+                  setShowEventModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 text-xs font-black shadow-md transition-all hover:scale-105 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Programar Concierto / Misa / Adoración</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1299,6 +1415,38 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
           onClose={() => {
             setIsSongEditorOpen(false);
             setEditingSong(null);
+          }}
+        />
+      )}
+
+      {/* Events Slider Modal (Ventana Deslizable para ver los eventos) */}
+      {showEventsSlider && (
+        <EventsSliderModal
+          currentTheme={currentTheme}
+          events={events}
+          isAdmin={isAdmin}
+          onClose={() => setShowEventsSlider(false)}
+          onOpenNewEvent={() => {
+            setEditingEvent(null);
+            setShowEventModal(true);
+          }}
+          onEditEvent={(ev) => {
+            setEditingEvent(ev);
+            setShowEventModal(true);
+          }}
+          onDeleteEvent={handleDeleteEvent}
+        />
+      )}
+
+      {/* Calendar Event Modal (Programar Concierto / Misa / Adoración) */}
+      {showEventModal && (
+        <CalendarEventModal
+          currentTheme={currentTheme}
+          event={editingEvent}
+          onSave={handleSaveEvent}
+          onClose={() => {
+            setShowEventModal(false);
+            setEditingEvent(null);
           }}
         />
       )}

@@ -7,8 +7,10 @@ import { CalendarEventModal } from './CalendarEventModal';
 import { PrayerWallModal } from './PrayerWallModal';
 import {
   Image as ImageIcon, Shuffle, ArrowRight, ExternalLink, Music, Edit2, Trash2,
-  PlusCircle, Calendar, UserPlus, Link, ChevronDown, X, Check, Heart
+  PlusCircle, Calendar, UserPlus, Link, ChevronDown, X, Check, Heart,
+  ChevronLeft, ChevronRight, LayoutGrid, SlidersHorizontal
 } from 'lucide-react';
+import { EventsSliderModal } from './EventsSliderModal';
 import {
   CommunityMember, CalendarEvent, PrayerIntentionStored, SocialLinkEditable,
   loadMembers, saveMembers, loadCalendarEvents, saveCalendarEvents,
@@ -92,6 +94,15 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [editingMember, setEditingMember] = useState<CommunityMember | null>(null);
   const [confirmDeleteMember, setConfirmDeleteMember] = useState<string | null>(null);
+  const [membersViewMode, setMembersViewMode] = useState<'slider' | 'grid'>('slider');
+  const [showEventsSliderModal, setShowEventsSliderModal] = useState(false);
+  const membersSliderRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollMembers = (dir: 'left' | 'right') => {
+    if (!membersSliderRef.current) return;
+    const offset = dir === 'left' ? -280 : 280;
+    membersSliderRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   // ─── Calendar State ──────────────────────────────────────────────────
   const [calEvents, setCalEvents] = useState<CalendarEvent[]>(() => loadCalendarEvents());
@@ -229,16 +240,18 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
   const eventTypeLabel: Record<CalendarEvent['type'], string> = {
     ensayo: 'Ensayo',
     presentacion: 'Presentación',
-    misa: 'Misa',
+    misa: 'Santa Misa',
     concierto: 'Concierto',
     vigilia: 'Vigilia',
+    adoracion: 'Adoración',
   };
   const eventTypeColor: Record<CalendarEvent['type'], string> = {
     ensayo: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
     presentacion: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-    misa: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    concierto: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    misa: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    concierto: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
     vigilia: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+    adoracion: 'bg-yellow-400/25 text-yellow-300 border-yellow-400/40',
   };
   const statusColor: Record<CalendarEvent['status'], string> = {
     confirmado: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
@@ -308,21 +321,71 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
         </div>
       </div>
 
-      {/* ── 2. Integrantes del Ministerio Musical (Miembros) ──────────── */}
+      {/* ── 2. Integrantes del Ministerio Musical (Deslizable / Carrusel) ─── */}
       <div className={`p-4 sm:p-6 rounded-2xl ${theme.cardBg} border ${theme.cardBorder} shadow-xl flex flex-col gap-4`}>
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-400 text-[22px]">group</span>
               <h2 className={`text-lg sm:text-xl font-bold ${theme.textMain}`}>Integrantes del Ministerio Musical</h2>
             </div>
-            <p className={`text-xs sm:text-sm ${theme.textMuted}`}>Músicos y salmistas consagrados al servicio de la alabanza católica.</p>
+            <p className={`text-xs sm:text-sm ${theme.textMuted}`}>
+              Músicos y salmistas consagrados al servicio de la alabanza católica.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-amber-300 font-bold shrink-0">{members.length} Miembros</span>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-amber-300 font-bold shrink-0">
+              {members.length} Miembros
+            </span>
+
+            {/* Slider navigation arrows */}
+            {membersViewMode === 'slider' && (
+              <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded-xl p-0.5">
+                <button
+                  type="button"
+                  onClick={() => scrollMembers('left')}
+                  className="p-1 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Deslizar a la izquierda"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollMembers('right')}
+                  className="p-1 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Deslizar a la derecha"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Toggle slider / grid */}
+            <button
+              type="button"
+              onClick={() => setMembersViewMode(m => m === 'slider' ? 'grid' : 'slider')}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+              title={membersViewMode === 'slider' ? 'Ver en cuadrícula completa' : 'Ver en carrusel deslizable'}
+            >
+              {membersViewMode === 'slider' ? (
+                <>
+                  <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Ver cuadrícula</span>
+                </>
+              ) : (
+                <>
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Ver deslizable</span>
+                </>
+              )}
+            </button>
+
             {isAdmin && (
-              <button onClick={() => { setEditingMember(null); setShowMemberModal(true); }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow transition-all hover:scale-105 cursor-pointer">
+              <button
+                onClick={() => { setEditingMember(null); setShowMemberModal(true); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow transition-all hover:scale-105 cursor-pointer"
+              >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Agregar miembro</span>
               </button>
@@ -330,36 +393,94 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {members.map(member => (
-            <div key={member.id} className="flex flex-col items-center gap-2.5 p-3.5 bg-black/35 border border-white/10 rounded-2xl hover:bg-white/5 transition-all group relative text-center">
-              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-amber-400/50 bg-white/5 shadow-md shrink-0 group-hover:scale-105 transition-transform">
-                <img alt={member.name} src={member.imageUrl} className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=150&auto=format&fit=crop&q=80'; }} />
-              </div>
-              <div className="min-w-0 flex flex-col items-center">
-                <h3 className={`text-sm font-bold ${theme.textMain} leading-snug`}>{member.name}</h3>
-                {member.description && (
-                  <p className={`text-[11px] ${theme.textMuted} mt-0.5 leading-tight`}>{member.description}</p>
+        {/* Member Cards: Deslizable Horizontal (Default) o Cuadrícula */}
+        {membersViewMode === 'slider' ? (
+          <div className="relative">
+            <div
+              ref={membersSliderRef}
+              className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory pb-3 pt-1 scrollbar-thin scroll-smooth"
+            >
+              {members.map(member => (
+                <div
+                  key={member.id}
+                  className="snap-start shrink-0 w-44 sm:w-48 flex flex-col items-center gap-2.5 p-3.5 bg-black/45 border border-white/10 hover:border-amber-400/40 rounded-2xl hover:bg-white/5 transition-all group relative text-center shadow-lg"
+                >
+                  <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-full overflow-hidden border-2 border-amber-400/60 bg-white/5 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-300">
+                    <img
+                      alt={member.name}
+                      src={member.imageUrl}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=150&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                  </div>
+                  <div className="min-w-0 w-full flex flex-col items-center">
+                    <h3 className={`text-sm font-bold ${theme.textMain} truncate w-full`}>{member.name}</h3>
+                    {member.description && (
+                      <p className={`text-[11px] ${theme.textMuted} mt-0.5 line-clamp-2 leading-tight px-1`}>
+                        {member.description}
+                      </p>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1.5 mt-1 pt-1.5 border-t border-white/10 w-full justify-center">
+                      <button
+                        onClick={() => { setEditingMember(member); setShowMemberModal(true); }}
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Editar miembro o cambiar foto"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteMember(member.id)}
+                        className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition-colors cursor-pointer"
+                        title="Eliminar miembro"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 px-1">
+              <span>← Desliza horizontalmente para ver a todos los integrantes →</span>
+              <span className="font-semibold text-amber-300/80">{members.length} músicos y salmistas</span>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {members.map(member => (
+              <div key={member.id} className="flex flex-col items-center gap-2.5 p-3.5 bg-black/35 border border-white/10 rounded-2xl hover:bg-white/5 transition-all group relative text-center">
+                <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-amber-400/50 bg-white/5 shadow-md shrink-0 group-hover:scale-105 transition-transform">
+                  <img alt={member.name} src={member.imageUrl} className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=150&auto=format&fit=crop&q=80'; }} />
+                </div>
+                <div className="min-w-0 flex flex-col items-center">
+                  <h3 className={`text-sm font-bold ${theme.textMain} leading-snug`}>{member.name}</h3>
+                  {member.description && (
+                    <p className={`text-[11px] ${theme.textMuted} mt-0.5 leading-tight`}>{member.description}</p>
+                  )}
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-white/10 w-full justify-center">
+                    <button onClick={() => { setEditingMember(member); setShowMemberModal(true); }}
+                      className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                      title="Editar miembro o cambiar foto">
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => setConfirmDeleteMember(member.id)}
+                      className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition-colors cursor-pointer"
+                      title="Eliminar miembro">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 )}
               </div>
-              {isAdmin && (
-                <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-white/10 w-full justify-center">
-                  <button onClick={() => { setEditingMember(member); setShowMemberModal(true); }}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                    title="Editar miembro o cambiar foto">
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => setConfirmDeleteMember(member.id)}
-                    className="p-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition-colors cursor-pointer"
-                    title="Eliminar miembro">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── 3. Calendario de Ensayos & Presentaciones ─────────────────── */}
@@ -368,16 +489,25 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-400 text-[22px]">event</span>
-              <h2 className={`text-lg sm:text-xl font-bold ${theme.textMain}`}>Calendario de Ensayos & Presentaciones</h2>
+              <h2 className={`text-lg sm:text-xl font-bold ${theme.textMain}`}>Calendario de Conciertos, Misas & Ensayos</h2>
             </div>
-            <p className={`text-xs sm:text-sm ${theme.textMuted}`}>Próximas convocatorias para el ministerio y equipo de audio.</p>
+            <p className={`text-xs sm:text-sm ${theme.textMuted}`}>Próximas convocatorias, adoraciones y eventos del ministerio.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowEventsSliderModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>Ver en Cartelera Deslizable</span>
+            </button>
+
             {isAdmin && (
               <button onClick={() => { setEditingEvent(null); setShowCalModal(true); }}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold shadow transition-all hover:scale-105 cursor-pointer">
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>Nueva actividad</span>
+                <span>Programar evento</span>
               </button>
             )}
           </div>
@@ -389,16 +519,29 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
             const dateParts = formattedDate.split(' ');
             return (
               <div key={ev.id} className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/5 transition-colors">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex flex-col items-center justify-center text-center shrink-0">
-                    <span className="text-[9px] text-amber-400 uppercase font-bold">{dateParts[0] || 'DÍA'}</span>
-                    <span className="text-sm font-extrabold text-white leading-none">{dateParts[1] || ''}</span>
-                    <span className="text-[9px] text-amber-300">{dateParts[2] || ''}</span>
-                  </div>
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Photo thumbnail if available, or calendar date box */}
+                  {ev.imageUrl ? (
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-amber-400/40 shrink-0 bg-slate-900 group">
+                      <img src={ev.imageUrl} alt={ev.title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center">
+                        <span className="text-[8px] text-amber-300 font-extrabold uppercase leading-none">{dateParts[0] || 'DÍA'}</span>
+                        <span className="text-sm font-black text-white leading-tight">{dateParts[1] || ''}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex flex-col items-center justify-center text-center shrink-0">
+                      <span className="text-[9px] text-amber-400 uppercase font-bold">{dateParts[0] || 'DÍA'}</span>
+                      <span className="text-sm font-extrabold text-white leading-none">{dateParts[1] || ''}</span>
+                      <span className="text-[9px] text-amber-300">{dateParts[2] || ''}</span>
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className={`text-sm font-bold ${theme.textMain}`}>{ev.title}</h3>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${eventTypeColor[ev.type]}`}>{eventTypeLabel[ev.type]}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${eventTypeColor[ev.type] || 'bg-white/10 text-white'}`}>
+                        {eventTypeLabel[ev.type] || ev.type}
+                      </span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${statusColor[ev.status]}`}>{ev.status}</span>
                     </div>
                     <p className="text-xs text-amber-300/90 font-medium mt-0.5">{ev.location}</p>
@@ -635,11 +778,23 @@ export const ComunidadView: React.FC<ComunidadViewProps> = ({
           onCancel={() => setConfirmDeleteMember(null)} />
       )}
 
-      {/* Confirm delete event */}
-      {confirmDeleteEvent && (
-        <ConfirmDialog message="¿Eliminar esta actividad del calendario? Esta acción no se puede deshacer."
-          onConfirm={() => handleDeleteEvent(confirmDeleteEvent)}
-          onCancel={() => setConfirmDeleteEvent(null)} />
+      {/* Events Slider Modal (Ventana Deslizable para ver los eventos) */}
+      {showEventsSliderModal && (
+        <EventsSliderModal
+          currentTheme={currentTheme}
+          events={calEvents}
+          isAdmin={isAdmin}
+          onClose={() => setShowEventsSliderModal(false)}
+          onOpenNewEvent={() => {
+            setEditingEvent(null);
+            setShowCalModal(true);
+          }}
+          onEditEvent={(ev) => {
+            setEditingEvent(ev);
+            setShowCalModal(true);
+          }}
+          onDeleteEvent={handleDeleteEvent}
+        />
       )}
     </div>
   );
