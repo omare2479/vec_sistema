@@ -8,7 +8,12 @@ import { RandomMemoryWidget } from './RandomMemoryWidget';
 import { ImportSongDocumentModal } from './ImportSongDocumentModal';
 import { DocumentViewerModal } from './DocumentViewerModal';
 import { SongEditorModal } from './SongEditorModal';
-import { FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar, Sparkles, Check, ExternalLink, Headphones, Music, Edit3 } from 'lucide-react';
+import {
+  FileText, Upload, Trash2, Eye, Download, Plus, CheckCircle, FileCode, Calendar,
+  Sparkles, Check, ExternalLink, Headphones, Music, Edit3, List, LayoutList, Layers,
+  BookOpen, ChevronRight, ChevronLeft
+} from 'lucide-react';
+import { SongPickerModal } from './SongPickerModal';
 import { getLiturgicalInfo } from '../utils/evangelioService';
 import { getSpotifyTrackUrl, getAmazonTrackUrl } from '../data/socialMediaData';
 import {
@@ -57,6 +62,11 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
   const [activeSubTab, setActiveSubTab] = useState<RepertorioSubTab>('concierto');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('todos');
+
+  // Song view modes: 'compact' (comprimido) | 'single' (1 a 1) | 'cards' (tarjetas grandes)
+  const [songViewMode, setSongViewMode] = useState<'compact' | 'single' | 'cards'>('compact');
+  const [selectedSongId, setSelectedSongId] = useState<string>('');
+  const [showSongPickerModal, setShowSongPickerModal] = useState<boolean>(false);
 
   // Song Editor State
   const [isSongEditorOpen, setIsSongEditorOpen] = useState(false);
@@ -254,6 +264,239 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
     if (selectedFilter === 'propios') return song.category === 'propios' || song.isOriginalVEC;
     return true;
   });
+
+  const activeSong = filteredSongs.find(s => s.id === selectedSongId) || filteredSongs[0] || songs[0];
+  const activeIndex = filteredSongs.findIndex(s => s.id === activeSong?.id);
+
+  // Helper to render the complete detailed card of a song
+  const renderFullSongCard = (song: Song, index: number) => {
+    if (!song) return null;
+    const isHimnoSong = song.title.includes('Voces en Cristo');
+
+    return (
+      <article
+        key={song.id}
+        className={`relative flex flex-col gap-3 p-4 sm:p-5 rounded-2xl shadow-xl transition-all duration-200 border ${
+          isHimnoSong
+            ? 'border-2 border-amber-400/60 bg-gradient-to-br from-[#121c44] via-[#0d1637] to-[#070d22] shadow-[0_0_24px_rgba(245,158,11,0.15)]'
+            : 'border-white/15 bg-gradient-to-br from-black/40 via-white/5 to-black/60 hover:border-amber-400/40'
+        }`}
+      >
+        {/* Top Bar: Order & Category + Duration & Key Note */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${
+                isHimnoSong
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black'
+                  : song.category === 'adoracion'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : song.category === 'animacion'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+              }`}
+            >
+              {song.orderNumber} • {song.categoryLabel}
+            </span>
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-black/40 border border-white/10 text-slate-300">
+              {song.duration}
+            </span>
+          </div>
+
+          <span className="text-xs font-semibold text-amber-300 flex items-center gap-1">
+            {song.rhythmNote}
+          </span>
+        </div>
+
+        {/* Title & Description */}
+        <div>
+          <h2 className={`text-lg sm:text-xl font-bold ${theme.textMain} flex items-center gap-2`}>
+            <span>{song.title}</span>
+            {isHimnoSong && (
+              <span className="material-symbols-outlined text-amber-400 text-[18px]">verified</span>
+            )}
+          </h2>
+          <p className={`text-xs sm:text-sm mt-1 leading-relaxed ${theme.textMuted}`}>
+            {song.subtitle}
+          </p>
+        </div>
+
+        {/* Interactive Controls Bar: Transpose, Chords Viewer, Audio Demo */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 mt-1 bg-black/50 border border-white/10 p-3 rounded-xl">
+          {/* Tono Stepper */}
+          {isAdmin ? (
+            <div className="flex items-center gap-2">
+              <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
+              <div className="inline-flex items-center bg-black/60 border border-white/20 rounded-lg p-0.5">
+                <button
+                  onClick={() => handleTranspose(song, -1)}
+                  className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
+                  title="Bajar medio tono (-1)"
+                >
+                  <span className="material-symbols-outlined text-[15px]">remove</span>
+                </button>
+                <span className="w-11 text-center text-xs font-bold text-amber-400 font-mono">
+                  {song.currentKey}
+                </span>
+                <button
+                  onClick={() => handleTranspose(song, 1)}
+                  className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
+                  title="Subir medio tono (+1)"
+                >
+                  <span className="material-symbols-outlined text-[15px]">add</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
+              <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-white/20 text-xs font-bold text-amber-400 font-mono">
+                {song.currentKey || 'Sol'}
+              </span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href={song.spotifyUrl || getSpotifyTrackUrl(song.title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-lg bg-[#1DB954]/15 hover:bg-[#1DB954]/25 text-[#1ED760] border border-[#1DB954]/30 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm group"
+              title={`Escuchar "${song.title}" en Spotify`}
+            >
+              <svg className="w-3.5 h-3.5 fill-current group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              <span className="hidden sm:inline">Spotify</span>
+            </a>
+
+            <a
+              href={song.amazonMusicUrl || getAmazonTrackUrl(song.title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-lg bg-[#00A8E1]/15 hover:bg-[#00A8E1]/25 text-[#00A8E1] border border-[#00A8E1]/30 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm group"
+              title={`Escuchar "${song.title}" en Amazon Music`}
+            >
+              <svg className="w-3.5 h-3.5 fill-current group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                <path d="M13.9 11.7c-.1-.7-.6-1.2-1.6-1.2-.9 0-1.5.5-1.7 1.2h3.3zm-3.3 2.1c0 .8.6 1.3 1.6 1.3.8 0 1.3-.3 1.6-.9h1.7c-.4 1.4-1.6 2.2-3.3 2.2-2.1 0-3.5-1.4-3.5-3.6 0-2.2 1.4-3.6 3.4-3.6 2.2 0 3.5 1.5 3.5 3.6v.9h-5zm-5.4-3.8h1.9v7.1H5.2v-7.1zm.9-1.5c-.7 0-1.2-.5-1.2-1.2 0-.7.5-1.2 1.2-1.2.7 0 1.2.5 1.2 1.2 0 .7-.5 1.2-1.2 1.2zm13.1 5.3c0-1.4-.9-2.3-2.3-2.3-.9 0-1.6.4-2 1.1v-1h-1.8v7.1h1.9v-3.7c0-.8.5-1.4 1.3-1.4.7 0 1 .4 1 1.2v3.9h1.9v-4.9z"/>
+              </svg>
+              <span className="hidden sm:inline">Amazon</span>
+            </a>
+
+            {song.introTags && song.introTags.length > 0 && (
+              <div className="hidden md:flex items-center gap-1.5">
+                {song.introTags.map((tag, tIdx) => (
+                  <span key={tIdx} className="px-2 py-0.5 rounded bg-white/10 text-[10px] text-slate-300">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => onOpenChordModal(song)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 border border-white/15 text-xs font-bold transition-all shadow-sm cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">queue_music</span>
+              <span>Pista & Acordes</span>
+            </button>
+
+            <button
+              onClick={() => onOpenStageMode(index)}
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Ver en pantalla completa de escenario"
+            >
+              <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+            </button>
+
+            {isAdmin && onUpdateSong && (
+              <button
+                onClick={() => {
+                  setEditingSong(song);
+                  setIsSongEditorOpen(true);
+                }}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-amber-400/15 transition-colors cursor-pointer"
+                title="Editar letra, acordes y datos del canto (Solo Admin)"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
+
+            {isAdmin && onDeleteSong && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`¿Seguro que deseas eliminar "${song.title}" del repertorio?`)) {
+                    onDeleteSong(song.id);
+                  }
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                title="Eliminar canto del repertorio público (Solo Admin)"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Audio Player for Himno Voces en Cristo */}
+        {isHimnoSong && (
+          <div className="flex flex-col gap-2 pt-2 mt-1 bg-black/60 border border-amber-400/30 p-3 rounded-xl shadow-inner">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={handleTogglePlay}
+                className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title={isPlayingAudio ? 'Pausar maqueta' : 'Reproducir maqueta oficial VEC'}
+              >
+                <span className="material-symbols-outlined text-[24px]">
+                  {isPlayingAudio ? 'pause' : 'play_arrow'}
+                </span>
+              </button>
+
+              <div className="flex-1 flex flex-col gap-1">
+                <div
+                  onClick={handleSeek}
+                  className="relative w-full h-2.5 bg-white/10 rounded-full overflow-hidden cursor-pointer group"
+                  title="Avanzar o retroceder audio"
+                >
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-sky-400 rounded-full transition-all duration-150 group-hover:brightness-125"
+                    style={{ width: `${(currentTime / totalDuration) * 100}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-mono">
+                  <span className="text-amber-400 font-semibold">{formatTimeSeconds(currentTime)}</span>
+                  <span className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">
+                    Maqueta Oficial VEC Banda
+                  </span>
+                  <span>{formatTimeSeconds(totalDuration)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={handleSpeedCycle}
+                  className="px-2 py-0.5 rounded bg-white/10 text-slate-300 hover:text-white text-[11px] font-mono font-bold border border-white/15"
+                  title="Velocidad de reproducción"
+                >
+                  {playbackSpeed}x
+                </button>
+                <button
+                  onClick={() => setIsLooping(!isLooping)}
+                  className={`p-1 rounded transition-colors ${
+                    isLooping ? 'text-amber-400' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Repetir tema"
+                >
+                  <span className="material-symbols-outlined text-[17px]">repeat</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </article>
+    );
+  };
 
   return (
     <div className="w-full max-w-[720px] mx-auto flex flex-col gap-6 relative z-20">
@@ -647,147 +890,170 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
             </div>
           </div>
 
-          {/* Song Cards Stack */}
-          <div className="flex flex-col gap-4">
-            {filteredSongs.map((song, index) => {
-              const isHimnoSong = song.title.includes('Voces en Cristo');
+          {/* View Mode Controls & Cancionero Selector Button */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-black/45 border border-white/10 rounded-2xl backdrop-blur-sm shadow-md">
+            <button
+              type="button"
+              onClick={() => setShowSongPickerModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-110 text-slate-950 text-xs font-black shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>📖 Seleccionar Canto del Cancionero ({songs.length})</span>
+            </button>
 
-              return (
-                <article
-                  key={song.id}
-                  className={`relative flex flex-col gap-3 p-4 sm:p-5 rounded-2xl shadow-xl transition-all duration-200 border ${
-                    isHimnoSong
-                      ? 'border-2 border-amber-400/60 bg-gradient-to-br from-[#121c44] via-[#0d1637] to-[#070d22] shadow-[0_0_24px_rgba(245,158,11,0.15)]'
-                      : 'border-white/15 bg-gradient-to-br from-black/40 via-white/5 to-black/60 hover:border-amber-400/40'
-                  }`}
-                >
-                  {/* Top Bar: Order & Category + Duration & Key Note */}
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${
-                          isHimnoSong
-                            ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black'
-                            : song.category === 'adoracion'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : song.category === 'animacion'
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                        }`}
-                      >
-                        {song.orderNumber} • {song.categoryLabel}
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-black/40 border border-white/10 text-slate-300">
-                        {song.duration}
-                      </span>
+            {/* View mode toggle pills */}
+            <div className="flex items-center gap-1 bg-black/60 border border-white/15 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setSongViewMode('compact')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  songViewMode === 'compact'
+                    ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Vista compacta / comprimida (ahorra espacio vertical)"
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                <span>Comprimida</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedSongId && filteredSongs.length > 0) {
+                    setSelectedSongId(filteredSongs[0].id);
+                  }
+                  setSongViewMode('single');
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  songViewMode === 'single'
+                    ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Ver solo 1 canto seleccionado a la vez"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>1 a 1</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSongViewMode('cards')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  songViewMode === 'cards'
+                    ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Vista extendida con tarjetas completas"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Tarjetas</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Songs Display Content based on songViewMode */}
+          {filteredSongs.length === 0 ? (
+            <div className="p-8 text-center bg-black/30 border border-white/10 rounded-2xl">
+              <span className="material-symbols-outlined text-slate-400 text-4xl mb-2">search_off</span>
+              <p className="text-sm font-semibold text-slate-300">No se encontraron cantos con ese filtro</p>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedFilter('todos');
+                }}
+                className="mt-3 px-4 py-1.5 rounded-lg bg-white/10 text-xs text-amber-300 font-bold hover:bg-white/20 cursor-pointer"
+              >
+                Restablecer búsqueda
+              </button>
+            </div>
+          ) : songViewMode === 'compact' ? (
+            /* 1. MODO COMPRIMIDO (Ultra ahorro de espacio vertical) */
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1 text-[11px] text-slate-400">
+                <span>Lista comprimida • Mostrando {filteredSongs.length} cantos</span>
+                <span>Click en un canto para abrirlo</span>
+              </div>
+              {filteredSongs.map((song, index) => {
+                const isHimnoSong = song.title.includes('Voces en Cristo');
+                const isSelected = song.id === activeSong?.id;
+
+                return (
+                  <div
+                    key={song.id}
+                    className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isSelected
+                        ? 'bg-amber-500/15 border-amber-400 shadow-md'
+                        : isHimnoSong
+                        ? 'bg-amber-950/20 border-amber-400/40 hover:bg-white/5'
+                        : 'bg-black/50 border-white/10 hover:bg-white/5 hover:border-amber-400/40'
+                    }`}
+                  >
+                    <div
+                      onClick={() => {
+                        setSelectedSongId(song.id);
+                        setSongViewMode('single');
+                      }}
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                      title="Click para ver en modo individual (1 a 1)"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-black/60 border border-white/15 flex items-center justify-center shrink-0 text-amber-400 font-mono text-xs font-bold group-hover:border-amber-400 group-hover:scale-105 transition-all">
+                        {song.orderNumber || index + 1}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors truncate">
+                            {song.title}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                            {song.currentKey || 'Sol'}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              song.category === 'adoracion'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : song.category === 'animacion'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                            }`}
+                          >
+                            {song.categoryLabel || song.category}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">
+                          {song.subtitle} {song.rhythmNote ? `• ${song.rhythmNote}` : ''}
+                        </p>
+                      </div>
                     </div>
 
-                    <span className="text-xs font-semibold text-amber-300 flex items-center gap-1">
-                      {song.rhythmNote}
-                    </span>
-                  </div>
-
-                  {/* Title & Description */}
-                  <div>
-                    <h2 className={`text-lg sm:text-xl font-bold ${theme.textMain} flex items-center gap-2`}>
-                      <span>{song.title}</span>
-                      {isHimnoSong && (
-                        <span className="material-symbols-outlined text-amber-400 text-[18px]">verified</span>
-                      )}
-                    </h2>
-                    <p className={`text-xs sm:text-sm mt-1 leading-relaxed ${theme.textMuted}`}>
-                      {song.subtitle}
-                    </p>
-                  </div>
-
-                  {/* Interactive Controls Bar: Transpose, Chords Viewer, Audio Demo */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 mt-1 bg-black/50 border border-white/10 p-3 rounded-xl">
-                    {/* Tono Stepper (Solo editable por el Administrador, Solo lectura para visitantes) */}
-                    {isAdmin ? (
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
-                        <div className="inline-flex items-center bg-black/60 border border-white/20 rounded-lg p-0.5">
-                          <button
-                            onClick={() => handleTranspose(song, -1)}
-                            className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-                            title="Bajar medio tono (-1)"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">remove</span>
-                          </button>
-                          <span className="w-11 text-center text-xs font-bold text-amber-400 font-mono">
-                            {song.currentKey}
-                          </span>
-                          <button
-                            onClick={() => handleTranspose(song, 1)}
-                            className="w-7 h-7 rounded flex items-center justify-center text-slate-200 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
-                            title="Subir medio tono (+1)"
-                          >
-                            <span className="material-symbols-outlined text-[15px]">add</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-xs ${theme.textMuted}`}>Tono:</span>
-                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-white/20 text-xs font-bold text-amber-400 font-mono">
-                          {song.currentKey || 'Sol'}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Streaming Buttons (Spotify & Amazon) */}
-                      <a
-                        href={song.spotifyUrl || getSpotifyTrackUrl(song.title)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-[#1DB954]/15 hover:bg-[#1DB954]/25 text-[#1ED760] border border-[#1DB954]/30 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm group"
-                        title={`Escuchar "${song.title}" en Spotify`}
-                      >
-                        <svg className="w-3.5 h-3.5 fill-current group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-                        </svg>
-                        <span className="hidden sm:inline">Spotify</span>
-                      </a>
-
-                      <a
-                        href={song.amazonMusicUrl || getAmazonTrackUrl(song.title)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-[#00A8E1]/15 hover:bg-[#00A8E1]/25 text-[#00A8E1] border border-[#00A8E1]/30 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm group"
-                        title={`Escuchar "${song.title}" en Amazon Music`}
-                      >
-                        <svg className="w-3.5 h-3.5 fill-current group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
-                          <path d="M13.9 11.7c-.1-.7-.6-1.2-1.6-1.2-.9 0-1.5.5-1.7 1.2h3.3zm-3.3 2.1c0 .8.6 1.3 1.6 1.3.8 0 1.3-.3 1.6-.9h1.7c-.4 1.4-1.6 2.2-3.3 2.2-2.1 0-3.5-1.4-3.5-3.6 0-2.2 1.4-3.6 3.4-3.6 2.2 0 3.5 1.5 3.5 3.6v.9h-5zm-5.4-3.8h1.9v7.1H5.2v-7.1zm.9-1.5c-.7 0-1.2-.5-1.2-1.2 0-.7.5-1.2 1.2-1.2.7 0 1.2.5 1.2 1.2 0 .7-.5 1.2-1.2 1.2zm13.1 5.3c0-1.4-.9-2.3-2.3-2.3-.9 0-1.6.4-2 1.1v-1h-1.8v7.1h1.9v-3.7c0-.8.5-1.4 1.3-1.4.7 0 1 .4 1 1.2v3.9h1.9v-4.9z"/>
-                        </svg>
-                        <span className="hidden sm:inline">Amazon</span>
-                      </a>
-
-                      {song.introTags && song.introTags.length > 0 && (
-                        <div className="hidden md:flex items-center gap-1.5">
-                          {song.introTags.map((tag, tIdx) => (
-                            <span key={tIdx} className="px-2 py-0.5 rounded bg-white/10 text-[10px] text-slate-300">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                       <button
                         onClick={() => onOpenChordModal(song)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 border border-white/15 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 border border-white/15 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                        title="Ver acordes y pista"
                       >
-                        <span className="material-symbols-outlined text-[16px]">queue_music</span>
-                        <span>Pista & Acordes</span>
+                        <span className="material-symbols-outlined text-[15px]">queue_music</span>
+                        <span>Acordes</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedSongId(song.id);
+                          setSongViewMode('single');
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 text-xs font-bold transition-all cursor-pointer"
+                        title="Ver este canto en modo individual"
+                      >
+                        <span>Ver 1 a 1</span>
                       </button>
 
                       <button
                         onClick={() => onOpenStageMode(index)}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                        title="Ver en pantalla completa de escenario"
+                        className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        title="Modo escenario"
                       >
-                        <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                        <span className="material-symbols-outlined text-[16px]">open_in_full</span>
                       </button>
 
                       {isAdmin && onUpdateSong && (
@@ -796,104 +1062,83 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
                             setEditingSong(song);
                             setIsSongEditorOpen(true);
                           }}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-amber-400/15 transition-colors cursor-pointer"
-                          title="Editar letra, acordes y datos del canto (Solo Admin)"
+                          className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
+                          title="Editar canto (Admin)"
                         >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {isAdmin && onDeleteSong && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`¿Seguro que deseas eliminar "${song.title}" del repertorio?`)) {
-                              onDeleteSong(song.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          title="Eliminar canto del repertorio público (Solo Admin)"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          ) : songViewMode === 'single' ? (
+            /* 2. MODO 1 A 1 (Canto seleccionado individual) */
+            <div className="flex flex-col gap-4">
+              {/* Single Song Navigation Control Bar */}
+              <div className="p-3 bg-gradient-to-r from-amber-950/40 via-black/60 to-amber-950/40 border border-amber-400/30 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (activeIndex > 0) setSelectedSongId(filteredSongs[activeIndex - 1].id);
+                    }}
+                    disabled={activeIndex <= 0}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Anterior</span>
+                  </button>
 
-                  {/* If this is Song 04: Render the Authentic Audio Player with real synthesis */}
-                  {isHimnoSong && (
-                    <div className="flex flex-col gap-2 pt-2 mt-1 bg-black/60 border border-amber-400/30 p-3 rounded-xl shadow-inner">
-                      <div className="flex items-center justify-between gap-3">
-                        <button
-                          onClick={handleTogglePlay}
-                          className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                          title={isPlayingAudio ? 'Pausar maqueta' : 'Reproducir maqueta oficial VEC'}
-                        >
-                          <span className="material-symbols-outlined text-[24px]">
-                            {isPlayingAudio ? 'pause' : 'play_arrow'}
-                          </span>
-                        </button>
+                  <span className="text-xs text-amber-300 font-bold px-1">
+                    Canto {activeIndex + 1} de {filteredSongs.length}
+                  </span>
 
-                        <div className="flex-1 flex flex-col gap-1">
-                          <div
-                            onClick={handleSeek}
-                            className="relative w-full h-2.5 bg-white/10 rounded-full overflow-hidden cursor-pointer group"
-                            title="Avanzar o retroceder audio"
-                          >
-                            <div
-                              className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-sky-400 rounded-full transition-all duration-150 group-hover:brightness-125"
-                              style={{ width: `${(currentTime / totalDuration) * 100}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-slate-300 font-mono">
-                            <span className="text-amber-400 font-semibold">{formatTimeSeconds(currentTime)}</span>
-                            <span className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">
-                              Maqueta Oficial VEC Banda
-                            </span>
-                            <span>{formatTimeSeconds(totalDuration)}</span>
-                          </div>
-                        </div>
+                  <button
+                    onClick={() => {
+                      if (activeIndex < filteredSongs.length - 1) setSelectedSongId(filteredSongs[activeIndex + 1].id);
+                    }}
+                    disabled={activeIndex >= filteredSongs.length - 1}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                  >
+                    <span>Siguiente</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={handleSpeedCycle}
-                            className="px-2 py-0.5 rounded bg-white/10 text-slate-300 hover:text-white text-[11px] font-mono font-bold border border-white/15"
-                            title="Velocidad de reproducción"
-                          >
-                            {playbackSpeed}x
-                          </button>
-                          <button
-                            onClick={() => setIsLooping(!isLooping)}
-                            className={`p-1 rounded transition-colors ${
-                              isLooping ? 'text-amber-400' : 'text-slate-400 hover:text-white'
-                            }`}
-                            title="Repetir tema"
-                          >
-                            <span className="material-symbols-outlined text-[17px]">repeat</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                {/* Quick Dropdown Picker */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={activeSong?.id || ''}
+                    onChange={(e) => setSelectedSongId(e.target.value)}
+                    className="px-3 py-1.5 bg-black/80 border border-white/20 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-amber-400 max-w-[200px] sm:max-w-xs truncate cursor-pointer"
+                  >
+                    {filteredSongs.map((s, idx) => (
+                      <option key={s.id} value={s.id} className="bg-slate-900 text-white">
+                        {idx + 1}. {s.title} ({s.currentKey || 'Sol'})
+                      </option>
+                    ))}
+                  </select>
 
-            {filteredSongs.length === 0 && (
-              <div className="p-8 text-center bg-black/30 border border-white/10 rounded-2xl">
-                <span className="material-symbols-outlined text-slate-400 text-4xl mb-2">search_off</span>
-                <p className="text-sm font-semibold text-slate-300">No se encontraron cantos con ese filtro</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedFilter('todos');
-                  }}
-                  className="mt-3 px-4 py-1.5 rounded-lg bg-white/10 text-xs text-amber-300 font-bold hover:bg-white/20"
-                >
-                  Restablecer búsqueda
-                </button>
+                  <button
+                    onClick={() => setShowSongPickerModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Abrir Cancionero</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Render the full card of ONLY activeSong */}
+              {activeSong && renderFullSongCard(activeSong, activeIndex)}
+            </div>
+          ) : (
+            /* 3. MODO TARJETAS COMPLETAS (Vista extendida tradicional) */
+            <div className="flex flex-col gap-4">
+              {filteredSongs.map((song, index) => renderFullSongCard(song, index))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1448,6 +1693,22 @@ export const RepertorioConciertoView: React.FC<RepertorioConciertoViewProps> = (
             setShowEventModal(false);
             setEditingEvent(null);
           }}
+        />
+      )}
+
+      {/* Song Picker Modal (Seleccionar Canto del Cancionero) */}
+      {showSongPickerModal && (
+        <SongPickerModal
+          currentTheme={currentTheme}
+          songs={songs}
+          selectedSongId={activeSong?.id}
+          onSelectSong={(song) => {
+            setSelectedSongId(song.id);
+            setSongViewMode('single');
+          }}
+          onOpenChordModal={(song) => onOpenChordModal(song)}
+          onOpenStageMode={(idx) => onOpenStageMode(idx)}
+          onClose={() => setShowSongPickerModal(false)}
         />
       )}
     </div>
